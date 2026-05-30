@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #ffffff;
+  --color-sidebar: #f5f5f5;
+  --color-surface: #fafafa;
+  --color-text: #1d1d1f;
+  --color-text-dim: #86868b;
+  --color-text-secondary: #6e6e73;
+  --color-accent: #007aff;
+  --color-accent-bg: rgba(0, 122, 255, 0.08);
+  --color-border: #e5e5e7;
+  --color-border-light: #f0f0f0;
+  --color-hover: rgba(0, 0, 0, 0.04);
+  --color-selected: rgba(0, 122, 255, 0.12);
+  --color-red: #ff3b30;
+  --color-green: #34c759;
+  --color-yellow: #ff9500;
+  --color-blue: #007aff;
+  --color-magenta: #af52de;
+  --color-cyan: #5ac8fa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Mono", "Cascadia Code",
+    "Fira Code", "JetBrains Mono", "Consolas", monospace;
+}
+
+/* Dockview overrides */
+.dv-dockview {
+  background: var(--color-bg) !important;
+}
+
+/* Tab group header - the bar that contains tabs */
+.dv-groupview {
+  background: var(--color-bg) !important;
+}
+
+.dv-tabs-and-actions-container {
+  background: var(--color-bg) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* Individual tabs */
+.dv-tab {
+  background: transparent !important;
+  color: var(--color-text-dim) !important;
+  border: none !important;
+  border-right: 1px solid var(--color-border-light) !important;
+  font-size: 12px !important;
+  padding: 4px 12px !important;
+  border-radius: 0 !important;
+}
+
+.dv-tab.dv-active-tab {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  box-shadow: inset 0 -2px 0 0 var(--color-accent) !important;
+}
+
+.dv-tab:hover {
+  background: var(--color-hover) !important;
+}
+
+/* Tab group header container */
+.dv-tab-group-header {
+  background: var(--color-bg) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* View containers and split views */
+.dv-split-view-container > .dv-view-container {
+  background: var(--color-bg) !important;
+}
+
+.dv-view-container {
+  background: var(--color-bg) !important;
+}
+
+.dv-watermark {
+  color: var(--color-text-dim) !important;
+}
+
+/* Resize handles */
+.dv-resize-handle {
+  background: var(--color-border) !important;
+}
+
+.dv-resize-handle:hover {
+  background: var(--color-accent) !important;
+}
+
+/* Tab actions (close button, etc.) */
+.dv-tab .dv-tab-close,
+.dv-tab .dv-tab-action {
+  color: var(--color-text-dim) !important;
+}
+
+.dv-tab .dv-tab-close:hover,
+.dv-tab .dv-tab-action:hover {
+  color: var(--color-text) !important;
+  background: var(--color-hover) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-dim);
+}

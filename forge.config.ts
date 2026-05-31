@@ -30,6 +30,11 @@ export default {
           config: "vite.preload.config.ts",
           target: "preload",
         },
+        {
+          entry: "src/preload/webview.ts",
+          config: "vite.webview.config.ts",
+          target: "preload",
+        },
       ],
       renderer: [
         {

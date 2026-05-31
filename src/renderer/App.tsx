@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { DockviewLayout } from "./components/DockviewLayout";
 import { Sidebar } from "./components/Sidebar";
+import { TitleBar } from "./components/TitleBar";
 import { CommandPalette } from "./components/CommandPalette";
 import { useSidebarStore } from "./stores/sidebarStore";
 import { useConfigStore } from "./stores/configStore";
+import { useZoomStore } from "./stores/zoomStore";
 import type { CustomCommand } from "./lib/types";
 
 const EMPTY_COMMANDS: CustomCommand[] = [];
@@ -33,6 +35,7 @@ export default function App() {
 
   const addTerminalRefs = useRef<Map<string, () => void>>(new Map());
   const toggleSidebar = useSidebarStore((s) => s.toggle);
+  const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
   const configLoaded = useConfigStore((s) => s.loaded);
   const customCommands = useConfigStore(
     (s) => s.config?.customCommands ?? EMPTY_COMMANDS,
@@ -138,6 +141,29 @@ export default function App() {
     });
   }, []);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = useSidebarStore.getState().width;
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX;
+      useSidebarStore.getState().setWidth(startWidth + delta);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "p") {
@@ -150,6 +176,15 @@ export default function App() {
       } else if (e.ctrlKey && e.shiftKey && e.key === "N") {
         e.preventDefault();
         createWorkspace();
+      } else if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        useZoomStore.getState().zoomIn();
+      } else if (e.ctrlKey && e.key === "-") {
+        e.preventDefault();
+        useZoomStore.getState().zoomOut();
+      } else if (e.ctrlKey && e.key === "0") {
+        e.preventDefault();
+        useZoomStore.getState().zoomReset();
       }
     },
     [toggleSidebar, createWorkspace],
@@ -161,33 +196,54 @@ export default function App() {
   }, [handleKeyDown]);
 
   return (
-    <div className="h-full w-full flex">
-      <Sidebar
-        workspaces={workspaceList}
-        activeWorkspaceId={activeWorkspaceId}
-        onSelectWorkspace={setActiveWorkspaceId}
-        onNewWorkspace={createWorkspace}
-        onRemoveWorkspace={removeWorkspace}
-        onRenameWorkspace={renameWorkspace}
-        onReorderWorkspaces={reorderWorkspaces}
-      />
-      <main className="flex-1 min-w-0" style={{ position: "relative" }}>
-        {workspaceIds.map((wsId) => (
-          <DockviewLayout
-            key={wsId}
-            workspaceId={wsId}
-            visible={wsId === activeWorkspaceId}
-            onStateChange={(state) => handleStateChange(wsId, state)}
-            onReady={(addTerminal) => handleDockviewReady(wsId, addTerminal)}
+    <div className="h-full w-full flex flex-col">
+      <TitleBar />
+      <div className="flex-1 flex min-h-0">
+        <Sidebar
+          workspaces={workspaceList}
+          activeWorkspaceId={activeWorkspaceId}
+          onSelectWorkspace={setActiveWorkspaceId}
+          onNewWorkspace={createWorkspace}
+          onRemoveWorkspace={removeWorkspace}
+          onRenameWorkspace={renameWorkspace}
+          onReorderWorkspaces={reorderWorkspaces}
+        />
+        {!sidebarCollapsed && (
+          <div
+            className="shrink-0 cursor-col-resize transition-colors duration-150"
+            style={{
+              width: 4,
+              backgroundColor: "var(--color-border)",
+            }}
+            onMouseDown={handleResizeStart}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "var(--color-accent)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "var(--color-border)";
+            }}
           />
-        ))}
-      </main>
-      <CommandPalette
-        key={paletteKey}
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        commands={customCommands}
-      />
+        )}
+        <main className="flex-1 min-w-0" style={{ position: "relative" }}>
+          {workspaceIds.map((wsId) => (
+            <DockviewLayout
+              key={wsId}
+              workspaceId={wsId}
+              visible={wsId === activeWorkspaceId}
+              onStateChange={(state) => handleStateChange(wsId, state)}
+              onReady={(addTerminal) => handleDockviewReady(wsId, addTerminal)}
+            />
+          ))}
+        </main>
+        <CommandPalette
+          key={paletteKey}
+          isOpen={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          commands={customCommands}
+        />
+      </div>
     </div>
   );
 }

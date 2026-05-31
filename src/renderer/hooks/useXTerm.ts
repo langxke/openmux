@@ -112,6 +112,14 @@ export function useXTerm(options: UseXTermOptions = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (!terminal || !options.fontSize) return;
+    terminal.options.fontSize = options.fontSize;
+    fitAddon?.fit();
+  }, [options.fontSize]);
+
   const write = useCallback((data: string) => {
     terminalRef.current?.write(data);
   }, []);

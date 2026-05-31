@@ -24,16 +24,16 @@ export function HeaderActions({ containerApi }: IDockviewHeaderActionsProps) {
   }, [containerApi]);
 
   return (
-    <div className="flex items-center gap-0.5 px-1">
+    <div className="flex items-center gap-0.5 h-full">
       <button
         onClick={addTerminal}
-        className="flex items-center justify-center w-5 h-5 rounded cursor-pointer hover:bg-black/10"
+        className="flex items-center justify-center w-4 h-4 rounded cursor-pointer hover:bg-black/10"
         title="新建终端"
         aria-label="新建终端"
       >
         <svg
-          width="12"
-          height="12"
+          width="10"
+          height="10"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -47,13 +47,13 @@ export function HeaderActions({ containerApi }: IDockviewHeaderActionsProps) {
       </button>
       <button
         onClick={addBrowser}
-        className="flex items-center justify-center w-5 h-5 rounded cursor-pointer hover:bg-black/10"
+        className="flex items-center justify-center w-4 h-4 rounded cursor-pointer hover:bg-black/10"
         title="新建浏览器"
         aria-label="新建浏览器"
       >
         <svg
-          width="12"
-          height="12"
+          width="10"
+          height="10"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

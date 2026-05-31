@@ -13,9 +13,19 @@ interface GlazeConfigApi {
   get(): Promise<GlazeConfig>;
 }
 
+interface GlazeWindowApi {
+  minimize(): Promise<void>;
+  maximize(): Promise<void>;
+  close(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+  onMaximizeChange(cb: (maximized: boolean) => void): () => void;
+}
+
 interface GlazeAPI {
   pty: GlazePty;
   config: GlazeConfigApi;
+  window: GlazeWindowApi;
+  getWebviewPreloadPath(): Promise<string>;
 }
 
 declare global {

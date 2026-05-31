@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
 import { getConfig } from "./config";
 
@@ -12,6 +13,7 @@ function createWindow() {
     minWidth: 600,
     minHeight: 400,
     title: "Glaze",
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -25,6 +27,13 @@ function createWindow() {
   } else {
     mainWindow.loadURL("http://localhost:5173");
   }
+
+  mainWindow.on("maximize", () => {
+    mainWindow?.webContents.send("window:maximizeChange", true);
+  });
+  mainWindow.on("unmaximize", () => {
+    mainWindow?.webContents.send("window:maximizeChange", false);
+  });
 }
 
 // --- PTY IPC ---
@@ -64,9 +73,36 @@ ipcMain.handle("config:get", () => {
   return getConfig();
 });
 
+ipcMain.handle("getWebviewPreloadPath", () => {
+  return pathToFileURL(path.join(__dirname, "webview.js")).toString();
+});
+
+// --- Window control IPC ---
+
+ipcMain.handle("window:minimize", () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.handle("window:maximize", () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.handle("window:close", () => {
+  mainWindow?.close();
+});
+
+ipcMain.handle("window:isMaximized", () => {
+  return mainWindow?.isMaximized() ?? false;
+});
+
 // --- App lifecycle ---
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   createWindow();
 
   app.on("activate", () => {

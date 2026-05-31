@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
   DockviewReact,
+  themeLight,
   type IWatermarkPanelProps,
   type DockviewApi,
 } from "dockview";
@@ -25,11 +26,13 @@ function DefaultWatermark(_props: IWatermarkPanelProps) {
 const panelComponents = {
   terminal: (props: {
     params: { sessionId: string; shell?: "powershell" | "cmd"; cwd?: string };
+    api: import("dockview").DockviewPanelApi;
   }) => (
     <TerminalPanel
       sessionId={props.params.sessionId}
       shell={props.params.shell ?? "powershell"}
       cwd={props.params.cwd ?? "."}
+      api={props.api}
     />
   ),
   browser: (props: {
@@ -100,6 +103,12 @@ export function DockviewLayout({
         setTimeout(syncUp, 50);
       });
 
+      event.api.onWillShowOverlay((e) => {
+        if (e.kind === "tab") {
+          e.preventDefault();
+        }
+      });
+
       if (!initialSidRef.current) {
         initialSidRef.current = createTerminalId();
       }
@@ -146,6 +155,8 @@ export function DockviewLayout({
         components={panelComponents}
         watermarkComponent={DefaultWatermark}
         rightHeaderActionsComponent={HeaderActions}
+        theme={themeLight}
+        disableTabsOverflowList={true}
         onReady={handleReady}
         className="h-full w-full"
       />

@@ -24,4 +24,19 @@ contextBridge.exposeInMainWorld("glaze", {
   config: {
     get: () => ipcRenderer.invoke("config:get"),
   },
+  getWebviewPreloadPath: () => ipcRenderer.invoke("getWebviewPreloadPath"),
+  window: {
+    minimize: () => ipcRenderer.invoke("window:minimize"),
+    maximize: () => ipcRenderer.invoke("window:maximize"),
+    close: () => ipcRenderer.invoke("window:close"),
+    isMaximized: () => ipcRenderer.invoke("window:isMaximized"),
+    onMaximizeChange: (cb: (maximized: boolean) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, maximized: boolean) =>
+        cb(maximized);
+      ipcRenderer.on("window:maximizeChange", handler);
+      return () => {
+        ipcRenderer.removeListener("window:maximizeChange", handler);
+      };
+    },
+  },
 });

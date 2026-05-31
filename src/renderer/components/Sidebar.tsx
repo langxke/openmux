@@ -27,6 +27,7 @@ export function Sidebar({
   onReorderWorkspaces,
 }: SidebarProps) {
   const collapsed = useSidebarStore((s) => s.collapsed);
+  const sidebarWidth = useSidebarStore((s) => s.width);
   const toggle = useSidebarStore((s) => s.toggle);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -95,7 +96,7 @@ export function Sidebar({
     <aside
       className="h-full flex flex-col shrink-0 transition-all duration-200"
       style={{
-        width: collapsed ? 40 : 220,
+        width: collapsed ? 40 : sidebarWidth,
         backgroundColor: "var(--color-sidebar)",
         borderRight: "1px solid var(--color-border)",
       }}
@@ -106,7 +107,8 @@ export function Sidebar({
         style={{
           height: 28,
           justifyContent: collapsed ? "center" : "space-between",
-        }}
+          WebkitAppRegion: "drag",
+        } as React.CSSProperties}
       >
         {!collapsed && (
           <span
@@ -118,11 +120,27 @@ export function Sidebar({
         )}
         <button
           onClick={toggle}
-          className="text-xs hover:opacity-70 transition-opacity select-none leading-none"
-          style={{ color: "var(--color-text-dim)", fontSize: 10 }}
+          className="flex items-center justify-center w-5 h-5 rounded border transition-colors select-none"
+          style={{
+            color: "var(--color-text-dim)",
+            borderColor: "var(--color-border)",
+            fontSize: 12,
+            WebkitAppRegion: "no-drag",
+          } as React.CSSProperties}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor =
+              "var(--color-hover)";
+            (e.currentTarget as HTMLElement).style.color = "var(--color-text)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor =
+              "transparent";
+            (e.currentTarget as HTMLElement).style.color =
+              "var(--color-text-dim)";
+          }}
           title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
         >
-          {collapsed ? "+" : "‹"}
+          {collapsed ? "☰" : "‹"}
         </button>
       </div>
 

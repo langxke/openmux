@@ -1,20 +1,29 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useXTerm } from "../hooks/useXTerm";
 import { glaze } from "../lib/glaze-api";
+import { useZoomStore } from "../stores/zoomStore";
+
+function basename(str: string): string {
+  const i = Math.max(str.lastIndexOf("/"), str.lastIndexOf("\\"));
+  return i >= 0 ? str.slice(i + 1) : str;
+}
 
 interface TerminalPanelProps {
   sessionId: string;
   shell?: "powershell" | "cmd";
   cwd?: string;
+  api?: import("dockview").DockviewPanelApi;
 }
 
 export function TerminalPanel({
   sessionId,
   shell = "powershell",
   cwd = ".",
+  api,
 }: TerminalPanelProps) {
   const offOutputRef = useRef<(() => void) | null>(null);
   const writeRef = useRef<(data: string) => void>(() => {});
+  const fontSize = useZoomStore((s) => s.terminalFontSize);
 
   const sessionRef = useRef(sessionId);
   /* eslint-disable react-hooks/refs */
@@ -31,10 +40,25 @@ export function TerminalPanel({
     glaze().pty.resize(sid, rows, cols);
   }, [shell, cwd]);
 
-  const { containerRef, write, focus } = useXTerm({
+  const { containerRef, terminal, write, focus } = useXTerm({
     onData: handleData,
     onResize: handleResize,
+    fontSize,
   });
+
+  useEffect(() => {
+    const term = terminal.current;
+    if (!term) return;
+    const dispose = term.onTitleChange((title) => {
+      if (!title) {
+        api?.setTitle("Terminal");
+        return;
+      }
+      const short = basename(title);
+      api?.setTitle(short.length > 30 ? short.slice(0, 28) + ".." : short);
+    });
+    return () => dispose.dispose();
+  }, [terminal, api]);
 
   /* eslint-disable react-hooks/refs */
   writeRef.current = write;
@@ -43,10 +67,8 @@ export function TerminalPanel({
   useEffect(() => {
     const sid = sessionRef.current;
 
-    // Ensure PTY session exists (main process handles dedup)
     glaze().pty.spawn(sid, shell, cwd, 24, 80);
 
-    // Register output listener
     if (!offOutputRef.current) {
       offOutputRef.current = glaze().pty.onOutput(sid, (data: string) => {
         writeRef.current(data);

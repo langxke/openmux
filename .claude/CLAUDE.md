@@ -72,6 +72,18 @@ pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint
 ```
 
+### 快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+B` | 折叠/展开侧边栏 |
+| `Ctrl+N` | 新建终端 |
+| `Ctrl+Shift+N` | 新建工作区 |
+| `Ctrl+P` | 命令面板 |
+| `Ctrl+=` / `Ctrl++` | 放大（终端字号/浏览器缩放） |
+| `Ctrl+-` | 缩小 |
+| `Ctrl+0` | 重置缩放 |
+
 ## Quality Gates
 
 ```bash
@@ -110,3 +122,11 @@ pnpm lint         # 前端 lint
 - **`useRef` 值在 StrictMode remount 时保留**：可利用此特性稳定 sessionId
 - **dockview 暗色元素需 CSS 覆盖**：`.dv-groupview`, `.dv-tabs-and-actions-container` 硬编码了暗色背景
 - **BrowserView 坐标使用 CSS 像素**：getBoundingClientRect 返回值直接传给 setBounds，无需 dpr 乘法
+
+## 参考文档
+
+| 文档 | 链接 |
+|------|------|
+| dockview API Options | <https://dockview.dev/docs/api/dockview/options> |
+| dockview React 组件 Props | `IDockviewReactProps extends DockviewOptions` 见 `node_modules/dockview/dist/esm/dockview/dockview.d.ts` |
+| dockview Core Options | `DockviewOptions` 见 `node_modules/dockview-core/dist/esm/dockview/options.d.ts` |

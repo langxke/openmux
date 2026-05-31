@@ -17,55 +17,6 @@
 | 状态管理 | Zustand | 5.x |
 | 包管理 | pnpm | latest |
 
-## 项目结构
-
-```
-glaze/
-├── glaze-app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── index.ts               # BrowserWindow, IPC handlers 注册
-│   │   │   ├── pty-manager.ts         # ★ node-pty 会话管理器（main process）
-│   │   │   ├── browser-manager.ts     # BrowserView 管理
-│   │   │   └── config.ts             # 配置读写 (%APPDATA%/glaze/glaze.json)
-│   │   ├── preload/
-│   │   │   └── index.ts              # contextBridge → window.glaze
-│   │   └── renderer/
-│   │       ├── components/
-│   │       │   ├── DockviewLayout.tsx  # dockview 实例容器（每个 workspace 一个）
-│   │       │   ├── TerminalPanel.tsx   # xterm.js 终端面板
-│   │       │   ├── BrowserPanel.tsx    # BrowserView 内嵌浏览器
-│   │       │   ├── Sidebar.tsx        # cmux 风格垂直 workspace 列表
-│   │       │   ├── CommandPalette.tsx # Ctrl+P 命令面板
-│   │       │   ├── HeaderActions.tsx  # tab 标题栏操作按钮
-│   │       │   └── StatusBar.tsx      # 底部状态栏
-│   │       ├── hooks/
-│   │       │   └── useXTerm.ts        # xterm.js 封装 hook
-│   │       ├── lib/
-│   │       │   ├── glaze-api.ts       # window.glaze 类型化封装
-│   │       │   ├── types.ts           # 共享类型
-│   │       │   └── terminalId.ts      # 终端 ID 生成器
-│   │       ├── stores/
-│   │       │   ├── sidebarStore.ts    # 侧边栏折叠状态
-│   │       │   ├── configStore.ts     # 配置加载
-│   │       │   └── terminalStore.ts   # 终端会话（当前未使用）
-│   │       ├── App.tsx                # 主布局：Sidebar + 多 DockviewLayout + CommandPalette
-│   │       ├── main.tsx               # React 入口
-│   │       └── index.css              # Tailwind + 白色主题 CSS 变量 + dockview 覆盖
-│   ├── forge.config.ts               # Electron Forge 配置
-│   ├── vite.main.config.ts           # 主进程 Vite 配置
-│   ├── vite.preload.config.ts        # preload Vite 配置
-│   ├── vite.renderer.config.ts       # 渲染进程 Vite 配置
-│   ├── index.html                    # Renderer 入口 HTML
-│   └── package.json
-├── .claude/
-│   ├── CLAUDE.md                      # 本文件
-│   └── notes/
-│       └── pty-lifecycle.md           # PTY 生命周期管理经验
-└── tasks/
-    └── prd.md                         # 产品需求文档（9 个 US）
-```
-
 ## 架构决策
 
 ### PTY 会话所有权在 Main Process ★

@@ -79,6 +79,12 @@ pnpm typecheck    # TypeScript 类型检查
 pnpm lint         # 前端 lint
 ```
 
+## Commit 规范
+
+- 提交信息必须使用中文描述
+- 格式：`<type>: <中文描述>`
+- 类型：feat, fix, refactor, docs, test, chore, perf, ci
+
 ## 关键文件速查
 
 | 文件 | 用途 |
@@ -92,6 +98,7 @@ pnpm lint         # 前端 lint
 | `src/renderer/components/DockviewLayout.tsx` | 每个 workspace 的 dockview 实例 |
 | `src/renderer/components/TerminalPanel.tsx` | xterm.js + PTY session 绑定 |
 | `src/renderer/components/BrowserPanel.tsx` | BrowserView 内嵌浏览器 |
+| `.claude/notes/` | 开发经验总结目录（踩坑记录、迁移心得等） |
 | `.claude/notes/pty-lifecycle.md` | PTY 生命周期经验文档 |
 
 ## 注意事项

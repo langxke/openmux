@@ -45,7 +45,7 @@ class PtyManager {
       if (existing.state === "releasing") {
         existing.state = "ready";
       }
-      if (existing.cols !== cols || existing.rows !== rows) {
+      if (rows > 0 && cols > 0 && (existing.cols !== cols || existing.rows !== rows)) {
         this.doResize(existing, rows, cols);
       }
       return existing;
@@ -67,8 +67,8 @@ class PtyManager {
     const shellPath = this.getShellPath(shell);
     const ptyProcess = pty.spawn(shellPath, [], {
       name: "xterm-256color",
-      cols,
-      rows,
+      cols: cols > 0 ? cols : 80,
+      rows: rows > 0 ? rows : 24,
       cwd: cwd === "." ? process.cwd() : cwd,
       env: { ...(process.env as Record<string, string>), TERM: "xterm-256color" },
     });

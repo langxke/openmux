@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, clipboard } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
@@ -9,7 +10,7 @@ let mainWindow: BrowserWindow | null = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
-    height: 800,
+    height: 650,
     minWidth: 600,
     minHeight: 400,
     title: "Glaze",
@@ -33,6 +34,20 @@ function createWindow() {
   });
   mainWindow.on("unmaximize", () => {
     mainWindow?.webContents.send("window:maximizeChange", false);
+  });
+
+  mainWindow.webContents.on("did-attach-webview", (_event, wc) => {
+    wc.on("context-menu", (_event, params) => {
+      const template: Electron.MenuItemConstructorOptions[] = [
+        { label: "复制", click: () => wc.copy() },
+        { label: "粘贴", click: () => wc.paste() },
+        { type: "separator" },
+        { label: "检查元素", click: () => wc.inspectElement(params.x, params.y) },
+      ];
+
+      const menu = Menu.buildFromTemplate(template);
+      menu.popup({ window: mainWindow! });
+    });
   });
 }
 
@@ -97,6 +112,65 @@ ipcMain.handle("window:close", () => {
 
 ipcMain.handle("window:isMaximized", () => {
   return mainWindow?.isMaximized() ?? false;
+});
+
+// --- Clipboard IPC ---
+
+ipcMain.handle("clipboard:readText", () => {
+  return clipboard.readText();
+});
+
+ipcMain.handle("clipboard:writeText", (_event, text: string) => {
+  clipboard.writeText(text);
+});
+
+// --- Workspace State IPC ---
+
+function workspaceStatePath(): string {
+  return path.join(app.getPath("userData"), "workspaces.json");
+}
+
+ipcMain.handle("workspace:load", () => {
+  try {
+    const p = workspaceStatePath();
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, "utf-8"));
+    }
+  } catch {
+    // corrupted or missing — return null
+  }
+  return null;
+});
+
+ipcMain.handle("workspace:save", (_event, state: unknown) => {
+  try {
+    const dir = path.dirname(workspaceStatePath());
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(workspaceStatePath(), JSON.stringify(state, null, 2), "utf-8");
+  } catch {
+    // best effort
+  }
+});
+
+// --- Context Menu IPC ---
+
+ipcMain.handle("context-menu:terminal", async (event) => {
+  return new Promise<string | null>((resolve) => {
+    const menu = Menu.buildFromTemplate([
+      { label: "复制", click: () => resolve("copy") },
+      { label: "粘贴", click: () => resolve("paste") },
+      { label: "全选", click: () => resolve("selectAll") },
+    ]);
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      resolve(null);
+      return;
+    }
+    menu.popup({
+      window: win,
+      callback: () => resolve(null),
+    });
+  });
 });
 
 // --- App lifecycle ---

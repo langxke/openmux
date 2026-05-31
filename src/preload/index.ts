@@ -39,4 +39,15 @@ contextBridge.exposeInMainWorld("glaze", {
       };
     },
   },
+  clipboard: {
+    readText: () => ipcRenderer.invoke("clipboard:readText"),
+    writeText: (text: string) => ipcRenderer.invoke("clipboard:writeText", text),
+  },
+  contextMenu: {
+    showTerminal: () => ipcRenderer.invoke("context-menu:terminal"),
+  },
+  workspace: {
+    load: () => ipcRenderer.invoke("workspace:load"),
+    save: (state: unknown) => ipcRenderer.invoke("workspace:save", state),
+  },
 });

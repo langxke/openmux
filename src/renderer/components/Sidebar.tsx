@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, forwardRef } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useSidebarStore } from "../stores/sidebarStore";
 
 interface WorkspaceRow {
@@ -17,7 +18,7 @@ interface SidebarProps {
   onReorderWorkspaces: (fromIndex: number, toIndex: number) => void;
 }
 
-export function Sidebar({
+export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
   workspaces,
   activeWorkspaceId,
   onSelectWorkspace,
@@ -25,9 +26,10 @@ export function Sidebar({
   onRemoveWorkspace,
   onRenameWorkspace,
   onReorderWorkspaces,
-}: SidebarProps) {
+}, ref) {
   const collapsed = useSidebarStore((s) => s.collapsed);
   const sidebarWidth = useSidebarStore((s) => s.width);
+  const isResizing = useSidebarStore((s) => s.isResizing);
   const toggle = useSidebarStore((s) => s.toggle);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,18 +96,20 @@ export function Sidebar({
 
   return (
     <aside
-      className="h-full flex flex-col shrink-0 transition-all duration-200"
+      ref={ref}
+      className={`h-full flex flex-col shrink-0 ${isResizing ? "" : "transition-all duration-200"}`}
       style={{
         width: collapsed ? 40 : sidebarWidth,
         backgroundColor: "var(--color-sidebar)",
-        borderRight: "1px solid var(--color-border)",
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center shrink-0 px-3"
+        className="flex items-center shrink-0"
         style={{
           height: 28,
+          paddingLeft: 12,
+          paddingRight: 12,
           justifyContent: collapsed ? "center" : "space-between",
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
@@ -120,10 +124,9 @@ export function Sidebar({
         )}
         <button
           onClick={toggle}
-          className="flex items-center justify-center w-5 h-5 rounded border transition-colors select-none"
+          className="flex items-center justify-center w-5 h-5 rounded transition-colors select-none"
           style={{
             color: "var(--color-text-dim)",
-            borderColor: "var(--color-border)",
             fontSize: 12,
             WebkitAppRegion: "no-drag",
           } as React.CSSProperties}
@@ -140,7 +143,7 @@ export function Sidebar({
           }}
           title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
         >
-          {collapsed ? "☰" : "‹"}
+          {collapsed ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronLeft size={14} strokeWidth={1.5} />}
         </button>
       </div>
 
@@ -302,4 +305,4 @@ export function Sidebar({
       )}
     </aside>
   );
-}
+});

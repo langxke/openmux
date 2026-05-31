@@ -112,3 +112,83 @@ StrictMode unmount 时 dockview 会销毁所有 panel，触发 `onDidRemovePanel
 - terax-ai: `src/modules/terminal/lib/useTerminalSession.ts` — 模块级 Map + ensureSession 模式
 - xterm.js 类型定义: `typings/xterm.d.ts` — onData/onResize 返回 IDisposable
 - React StrictMode 文档: ref 值在 remount 时保留
+
+## PTY 输出监听器必须在 spawn 之前注册 (2026-05-31)
+
+### 现象
+新建终端后无任何输出，光标停留在 (1,1)。改变窗口大小后才出现内容。
+
+### 根因
+React effect 执行顺序：子组件 effect（`useXTerm`）先于父组件 effect（`TerminalPanel`）。
+
+```
+1. useXTerm effect: fitAddon.fit() → onResize → handleResize → pty.spawn(...) → IPC 创建 PTY
+2. TerminalPanel effect: pty.onOutput(sid, cb) ← 注册 IPC 监听器
+```
+
+PTY 在步骤 1 创建后立即开始输出（PowerShell banner），但步骤 2 的 IPC 监听器尚未注册，数据丢失。后续 resize 触发新输出时才可见。
+
+### 解决方案
+1. 在 render 阶段提前注册监听器（`if (!offOutputRef.current)` guard 确保只注册一次）
+2. effect 中先 `offOutputRef.current?.()` + 重新注册，再调 `pty.spawn`
+
+```tsx
+// Render phase — 在任何 effect 之前执行
+if (!offOutputRef.current) {
+  offOutputRef.current = glaze().pty.onOutput(sid, cb);
+}
+
+useEffect(() => {
+  // 重新注册（deps 变化时确保监听器在 spawn 之前就位）
+  offOutputRef.current?.();
+  offOutputRef.current = glaze().pty.onOutput(sid, cb);
+  glaze().pty.spawn(sid, shell, cwd, 0, 0);
+  return () => { offOutputRef.current?.(); offOutputRef.current = null; glaze().pty.release(sid); };
+}, [sessionId, shell, cwd]);
+```
+
+## ResizeObserver 必须用 rAF 限流 (2026-05-31)
+
+### 现象
+折叠/展开 sidebar 时（`transition-all duration-200`），终端内容出现重复/交错：
+```
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserveWindows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved. tall the latest PowerShell...
+```
+
+### 根因
+Sidebar 200ms CSS 过渡期间，终端容器每帧都在 resize。`ResizeObserver → fitAddon.fit() → onResize → pty.spawn/pty.resize` 在 200ms 内触发 ~12 次。PTY 反复 resize 导致 shell 重绘输出在 xterm.js 缓冲区中交错。
+
+### 解决方案
+ResizeObserver 回调用 `requestAnimationFrame` 限流，每帧最多调用一次 `fit()`：
+
+```ts
+let rafId: number | null = null;
+const resizeObserver = new ResizeObserver(() => {
+  if (rafId !== null) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = null;
+    fitAddon.fit();
+  });
+});
+// cleanup 中 cancelAnimationFrame(rafId)
+```
+
+## handleResize 用 pty.spawn 代替 pty.resize (2026-05-31)
+
+### 问题
+`handleResize` 只调 `pty.resize` 时，如果 resize 事件在 session 创建之前触发，resize 是空操作。后续 session 创建用错误尺寸。
+
+### 解决方案
+`handleResize` 调 `pty.spawn(sid, shell, cwd, rows, cols)`，利用 `ensureSession` 的幂等性——session 不存在就创建（正确尺寸），存在就 resize。
+
+## effect 中 pty.spawn 传 0 尺寸避免覆盖 (2026-05-31)
+
+### 问题
+TerminalPanel effect 中 `pty.spawn(sid, shell, cwd, 24, 80)` 硬编码尺寸。如果 `handleResize`（来自 `useXTerm` effect）先用正确尺寸创建了 session，effect 随后调用会因 `ensureSession` 的 resize 逻辑把尺寸改回 24x80。
+
+### 解决方案
+- effect 传 `(0, 0)` 表示"只确保 session 存在，不要 resize"
+- `ensureSession`: `if (rows > 0 && cols > 0 && ...) this.doResize(...)`
+- `createSession`: `cols: cols > 0 ? cols : 80` 兜底

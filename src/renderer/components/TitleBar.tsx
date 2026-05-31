@@ -24,8 +24,7 @@ export function TitleBar() {
       } as React.CSSProperties}
     >
       <span
-        className="pl-3 text-xs font-medium"
-        style={{ color: "var(--color-text-dim)", fontSize: 11 }}
+        style={{ color: "var(--color-text-dim)", fontSize: 11, paddingLeft: 12 }}
       >
         Glaze
       </span>

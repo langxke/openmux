@@ -112,6 +112,9 @@ pnpm lint         # 前端 lint
 | `src/renderer/components/BrowserPanel.tsx` | BrowserView 内嵌浏览器 |
 | `.claude/notes/` | 开发经验总结目录（踩坑记录、迁移心得等） |
 | `.claude/notes/pty-lifecycle.md` | PTY 生命周期经验文档 |
+| `.claude/notes/dockview-integration.md` | dockview 集成经验（右键菜单/光标/拖拽） |
+| `.claude/notes/workspace-persistence.md` | 工作区持久化方案 |
+| `.claude/notes/ui-interactions.md` | UI 交互经验（拖拽/缩放/字体） |
 
 ## 注意事项
 
@@ -122,6 +125,12 @@ pnpm lint         # 前端 lint
 - **`useRef` 值在 StrictMode remount 时保留**：可利用此特性稳定 sessionId
 - **dockview 暗色元素需 CSS 覆盖**：`.dv-groupview`, `.dv-tabs-and-actions-container` 硬编码了暗色背景
 - **BrowserView 坐标使用 CSS 像素**：getBoundingClientRect 返回值直接传给 setBounds，无需 dpr 乘法
+- **右键菜单不传 x/y 坐标**：让 `Menu.popup()` 用默认光标位置，手动传反而偏移
+- **`-webkit-app-region: drag` 导致双击最大化**：Windows 将拖拽区域的双击解释为窗口最大化，tab 栏需设为 `no-drag`
+- **ResizeObserver 必须 rAF 限流**：sidebar 动画期间每帧 resize 会导致 xterm.js 缓冲区内容交错
+- **PTY 输出监听器必须在 spawn 前注册**：IPC 监听器晚于 PTY 创建会导致首次输出丢失
+- **工作区持久化有启动竞态**：restore 完成前禁止 persist，否则初始状态覆盖已保存的正确状态
+- **dockview cursor: grab 需 `!important` 覆盖**：选择器优先级不够
 
 ## 参考文档
 
@@ -130,3 +139,10 @@ pnpm lint         # 前端 lint
 | dockview API Options | <https://dockview.dev/docs/api/dockview/options> |
 | dockview React 组件 Props | `IDockviewReactProps extends DockviewOptions` 见 `node_modules/dockview/dist/esm/dockview/dockview.d.ts` |
 | dockview Core Options | `DockviewOptions` 见 `node_modules/dockview-core/dist/esm/dockview/options.d.ts` |
+
+| 笔记 | 内容 |
+|------|------|
+| `.claude/notes/pty-lifecycle.md` | PTY 生命周期、竞态处理、ResizeObserver 限流、监听器时序 |
+| `.claude/notes/dockview-integration.md` | 右键菜单、面板渲染模式、光标覆盖、拖拽区域 |
+| `.claude/notes/workspace-persistence.md` | 布局持久化、启动竞态、URL 跟踪、序列化 |
+| `.claude/notes/ui-interactions.md` | Sidebar 拖拽、字号缩放、字体、CSS 经验 |

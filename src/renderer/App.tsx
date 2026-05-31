@@ -6,7 +6,9 @@ import { CommandPalette } from "./components/CommandPalette";
 import { useSidebarStore } from "./stores/sidebarStore";
 import { useConfigStore } from "./stores/configStore";
 import { useZoomStore } from "./stores/zoomStore";
+import { glaze } from "./lib/glaze-api";
 import type { CustomCommand } from "./lib/types";
+import type { DockviewApi, SerializedDockview } from "dockview";
 
 const EMPTY_COMMANDS: CustomCommand[] = [];
 
@@ -41,6 +43,12 @@ export default function App() {
     (s) => s.config?.customCommands ?? EMPTY_COMMANDS,
   );
   const hasLoaded = useRef(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const dockviewApis = useRef<Map<string, DockviewApi>>(new Map());
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoredRef = useRef(false);
+  const savedLayoutsRef = useRef<Map<string, SerializedDockview>>(new Map());
+  const isRestoringRef = useRef(true);
 
   useEffect(() => {
     if (!hasLoaded.current && !configLoaded) {
@@ -48,6 +56,96 @@ export default function App() {
       useConfigStore.getState().load();
     }
   }, [configLoaded]);
+
+  // --- Workspace persistence ---
+
+  const workspaceIdsRef = useRef(workspaceIds);
+  workspaceIdsRef.current = workspaceIds;
+  const workspaceMetaRef = useRef(workspaceMeta);
+  workspaceMetaRef.current = workspaceMeta;
+  const activeRef = useRef(activeWorkspaceId);
+  activeRef.current = activeWorkspaceId;
+
+  const persistWorkspace = useCallback(() => {
+    if (isRestoringRef.current) return;
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      const apis = dockviewApis.current;
+      const data = {
+        sidebar: {
+          width: useSidebarStore.getState().width,
+          collapsed: useSidebarStore.getState().collapsed,
+        },
+        workspaces: workspaceIdsRef.current.map((id) => {
+          const meta = workspaceMetaRef.current.get(id);
+          const api = apis.get(id);
+          return {
+            id,
+            name: meta?.name ?? "Workspace",
+            layout: api ? api.toJSON() : null,
+          };
+        }),
+        activeWorkspaceId: activeRef.current,
+        sessionSizes: useZoomStore.getState().sessionSizes,
+      };
+      glaze().workspace.save(data);
+    }, 500);
+  }, []);
+
+  // Restore on first mount
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    glaze().workspace.load().then((saved: any) => {
+      if (saved?.workspaces?.length) {
+        // Restore sidebar
+        if (saved.sidebar) {
+          useSidebarStore.getState().setWidth(saved.sidebar.width ?? 220);
+          if (saved.sidebar.collapsed) {
+            useSidebarStore.getState().setCollapsed(true);
+          }
+        }
+
+        // Restore session font sizes
+        if (saved.sessionSizes) {
+          useZoomStore.setState({ sessionSizes: saved.sessionSizes });
+        }
+
+        // Restore workspaces
+        const restoredIds: string[] = [];
+        const restoredMeta = new Map<string, WorkspaceEntry>();
+        const layouts = new Map<string, SerializedDockview>();
+        for (const ws of saved.workspaces) {
+          const id = ws.id || `ws-${nextWorkspaceNum++}`;
+          restoredIds.push(id);
+          restoredMeta.set(id, {
+            id,
+            name: ws.name || "Workspace",
+            panelCount: 0,
+          });
+          if (ws.layout) layouts.set(id, ws.layout as SerializedDockview);
+        }
+
+        if (restoredIds.length > 0) {
+          savedLayoutsRef.current = layouts;
+          setWorkspaceIds(restoredIds);
+          setWorkspaceMeta(restoredMeta);
+          if (saved.activeWorkspaceId && restoredIds.includes(saved.activeWorkspaceId)) {
+            setActiveWorkspaceId(saved.activeWorkspaceId);
+          }
+          // Sync counter to avoid duplicate IDs
+          let maxNum = 1;
+          for (const wid of restoredIds) {
+            const m = wid.match(/^ws-(\d+)$/);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10) + 1);
+          }
+          nextWorkspaceNum = maxNum;
+        }
+      }
+      isRestoringRef.current = false;
+    });
+  }, []);
 
   const workspaceList = workspaceIds.map((id) => {
     const meta = workspaceMeta.get(id);
@@ -68,8 +166,9 @@ export default function App() {
         }
         return next;
       });
+      persistWorkspace();
     },
-    [],
+    [persistWorkspace],
   );
 
   const handleDockviewReady = useCallback(
@@ -78,6 +177,14 @@ export default function App() {
     },
     [],
   );
+
+  const handleApiReady = useCallback((wsId: string, api: DockviewApi) => {
+    dockviewApis.current.set(wsId, api);
+  }, []);
+
+  const handleLayoutChange = useCallback(() => {
+    persistWorkspace();
+  }, [persistWorkspace]);
 
   const createWorkspace = useCallback(() => {
     const n = nextWorkspaceNum++;
@@ -89,10 +196,12 @@ export default function App() {
       return next;
     });
     setActiveWorkspaceId(newId);
-  }, []);
+    persistWorkspace();
+  }, [persistWorkspace]);
 
   const removeWorkspace = useCallback((wsId: string) => {
     addTerminalRefs.current.delete(wsId);
+    dockviewApis.current.delete(wsId);
     setWorkspaceIds((prev) => {
       const next = prev.filter((id) => id !== wsId);
       if (next.length === 0) {
@@ -118,8 +227,9 @@ export default function App() {
       const currentIds = workspaceIds;
       return currentIds.find((id) => id !== wsId) ?? "";
     });
+    persistWorkspace();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [persistWorkspace]);
 
   const renameWorkspace = useCallback((wsId: string, name: string) => {
     setWorkspaceMeta((prev) => {
@@ -130,7 +240,8 @@ export default function App() {
       }
       return next;
     });
-  }, []);
+    persistWorkspace();
+  }, [persistWorkspace]);
 
   const reorderWorkspaces = useCallback((fromIndex: number, toIndex: number) => {
     setWorkspaceIds((prev) => {
@@ -139,19 +250,30 @@ export default function App() {
       next.splice(toIndex, 0, moved);
       return next;
     });
-  }, []);
+    persistWorkspace();
+  }, [persistWorkspace]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = useSidebarStore.getState().width;
+    const el = sidebarRef.current;
+
+    useSidebarStore.getState().setIsResizing(true);
 
     const handleMouseMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      useSidebarStore.getState().setWidth(startWidth + delta);
+      const w = Math.min(480, Math.max(120, Math.round(startWidth + delta)));
+      if (el) {
+        el.style.width = `${w}px`;
+      }
     };
 
     const handleMouseUp = () => {
+      const finalWidth = el ? parseInt(el.style.width, 10) : startWidth;
+      useSidebarStore.getState().setWidth(finalWidth || startWidth);
+      useSidebarStore.getState().setIsResizing(false);
+      persistWorkspace();
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "";
@@ -162,7 +284,7 @@ export default function App() {
     document.body.style.userSelect = "none";
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, []);
+  }, [persistWorkspace]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -200,6 +322,7 @@ export default function App() {
       <TitleBar />
       <div className="flex-1 flex min-h-0">
         <Sidebar
+          ref={sidebarRef}
           workspaces={workspaceList}
           activeWorkspaceId={activeWorkspaceId}
           onSelectWorkspace={setActiveWorkspaceId}
@@ -210,21 +333,27 @@ export default function App() {
         />
         {!sidebarCollapsed && (
           <div
-            className="shrink-0 cursor-col-resize transition-colors duration-150"
-            style={{
-              width: 4,
-              backgroundColor: "var(--color-border)",
-            }}
+            className="shrink-0 cursor-col-resize"
+            style={{ width: 5 }}
             onMouseDown={handleResizeStart}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                "var(--color-accent)";
+              const line = e.currentTarget.firstChild as HTMLElement;
+              if (line) line.style.backgroundColor = "var(--color-accent)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                "var(--color-border)";
+              const line = e.currentTarget.firstChild as HTMLElement;
+              if (line) line.style.backgroundColor = "var(--color-border)";
             }}
-          />
+          >
+            <div
+              className="transition-colors duration-150"
+              style={{
+                width: 1,
+                height: "100%",
+                backgroundColor: "var(--color-border)",
+              }}
+            />
+          </div>
         )}
         <main className="flex-1 min-w-0" style={{ position: "relative" }}>
           {workspaceIds.map((wsId) => (
@@ -232,8 +361,11 @@ export default function App() {
               key={wsId}
               workspaceId={wsId}
               visible={wsId === activeWorkspaceId}
+              initialLayout={savedLayoutsRef.current.get(wsId)}
               onStateChange={(state) => handleStateChange(wsId, state)}
               onReady={(addTerminal) => handleDockviewReady(wsId, addTerminal)}
+              onApiReady={(api) => handleApiReady(wsId, api)}
+              onLayoutChange={handleLayoutChange}
             />
           ))}
         </main>

@@ -21,10 +21,27 @@ interface GlazeWindowApi {
   onMaximizeChange(cb: (maximized: boolean) => void): () => void;
 }
 
+interface GlazeClipboardApi {
+  readText(): Promise<string>;
+  writeText(text: string): Promise<void>;
+}
+
+interface GlazeContextMenuApi {
+  showTerminal(): Promise<"copy" | "paste" | "selectAll" | null>;
+}
+
+interface GlazeWorkspaceApi {
+  load(): Promise<unknown>;
+  save(state: unknown): Promise<void>;
+}
+
 interface GlazeAPI {
   pty: GlazePty;
   config: GlazeConfigApi;
   window: GlazeWindowApi;
+  clipboard: GlazeClipboardApi;
+  contextMenu: GlazeContextMenuApi;
+  workspace: GlazeWorkspaceApi;
   getWebviewPreloadPath(): Promise<string>;
 }
 

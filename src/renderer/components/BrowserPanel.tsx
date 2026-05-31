@@ -26,12 +26,12 @@ interface WebviewElement extends HTMLElement {
   goForward(): void;
   setZoomLevel(level: number): void;
   addEventListener(
-    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated",
+    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated" | "did-navigate" | "did-navigate-in-page",
     listener: EventListener,
     options?: boolean | AddEventListenerOptions,
   ): void;
   removeEventListener(
-    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated",
+    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated" | "did-navigate" | "did-navigate-in-page",
     listener: EventListener,
     options?: boolean | EventListenerOptions,
   ): void;
@@ -52,7 +52,7 @@ export function BrowserPanel({
   const webviewRef = useRef<WebviewElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const zoomRef = useRef(0);
-  const initialUrl = params.initialUrl ?? "https://www.google.com";
+  const initialUrl = params.initialUrl ?? "https://www.bing.com";
   const [inputValue, setInputValue] = useState(initialUrl);
   const [preloadPath, setPreloadPath] = useState<string | null>(null);
 
@@ -108,6 +108,14 @@ export function BrowserPanel({
       if (event.title) api.setTitle(event.title);
     };
 
+    const onNavigate = (e: Event) => {
+      const url = (e as unknown as { url: string }).url;
+      if (url && url !== "about:blank") {
+        setInputValue(url);
+        api.updateParameters({ initialUrl: url });
+      }
+    };
+
     const onReady = () => {
       applyZoom();
     };
@@ -116,12 +124,16 @@ export function BrowserPanel({
     wv.addEventListener("did-finish-load", onReady);
     wv.addEventListener("ipc-message", onIpcMessage);
     wv.addEventListener("page-title-updated", onTitleUpdated as EventListener);
+    wv.addEventListener("did-navigate", onNavigate);
+    wv.addEventListener("did-navigate-in-page", onNavigate);
 
     return () => {
       wv.removeEventListener("dom-ready", onReady);
       wv.removeEventListener("did-finish-load", onReady);
       wv.removeEventListener("ipc-message", onIpcMessage);
       wv.removeEventListener("page-title-updated", onTitleUpdated as EventListener);
+      wv.removeEventListener("did-navigate", onNavigate);
+      wv.removeEventListener("did-navigate-in-page", onNavigate);
     };
   }, [applyZoom, preloadPath, api]);
 

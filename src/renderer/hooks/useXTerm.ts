@@ -95,12 +95,18 @@ export function useXTerm(options: UseXTermOptions = {}) {
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    let rafId: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit();
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        fitAddon.fit();
+      });
     });
     resizeObserver.observe(container);
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       dataDispose.dispose();
       resizeDispose.dispose();

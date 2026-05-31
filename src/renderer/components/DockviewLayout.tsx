@@ -4,6 +4,7 @@ import {
   themeLight,
   type IWatermarkPanelProps,
   type DockviewApi,
+  type SerializedDockview,
 } from "dockview";
 import "dockview/dist/styles/dockview.css";
 import { TerminalPanel } from "./TerminalPanel";
@@ -11,6 +12,7 @@ import { BrowserPanel } from "./BrowserPanel";
 import { HeaderActions } from "./HeaderActions";
 import { glaze } from "../lib/glaze-api";
 import { createTerminalId } from "../lib/terminalId";
+import { useZoomStore } from "../stores/zoomStore";
 
 function DefaultWatermark(_props: IWatermarkPanelProps) {
   return (
@@ -49,15 +51,21 @@ interface DockviewLayoutState {
 interface DockviewLayoutProps {
   workspaceId: string;
   visible: boolean;
+  initialLayout?: SerializedDockview;
   onStateChange: (state: DockviewLayoutState) => void;
   onReady: (addTerminal: () => void) => void;
+  onApiReady?: (api: DockviewApi) => void;
+  onLayoutChange?: () => void;
 }
 
 export function DockviewLayout({
   workspaceId: _workspaceId,
   visible,
+  initialLayout,
   onStateChange,
   onReady,
+  onApiReady,
+  onLayoutChange,
 }: DockviewLayoutProps) {
   const apiRef = useRef<DockviewApi | null>(null);
   const initialSidRef = useRef<string | null>(null);
@@ -92,6 +100,7 @@ export function DockviewLayout({
   const handleReady = useCallback(
     (event: { api: DockviewApi }) => {
       apiRef.current = event.api;
+      onApiReady?.(event.api);
 
       event.api.onDidRemovePanel((panel) => {
         const sid = panel.params?.sessionId as string | undefined;
@@ -99,8 +108,14 @@ export function DockviewLayout({
         setTimeout(syncUp, 50);
       });
 
-      event.api.onDidActivePanelChange(() => {
+      event.api.onDidActivePanelChange((panel) => {
+        const sid = panel?.params?.sessionId as string | undefined;
+        useZoomStore.getState().setActiveSession(sid ?? null);
         setTimeout(syncUp, 50);
+      });
+
+      event.api.onDidLayoutChange(() => {
+        onLayoutChange?.();
       });
 
       event.api.onWillShowOverlay((e) => {
@@ -109,22 +124,26 @@ export function DockviewLayout({
         }
       });
 
-      if (!initialSidRef.current) {
-        initialSidRef.current = createTerminalId();
-      }
-      const sid = initialSidRef.current;
+      if (initialLayout) {
+        event.api.fromJSON(initialLayout);
+      } else {
+        if (!initialSidRef.current) {
+          initialSidRef.current = createTerminalId();
+        }
+        const sid = initialSidRef.current;
 
-      event.api.addPanel({
-        id: `panel-${sid}`,
-        component: "terminal",
-        title: "PowerShell",
-        params: { sessionId: sid, shell: "powershell" },
-      });
+        event.api.addPanel({
+          id: `panel-${sid}`,
+          component: "terminal",
+          title: "PowerShell",
+          params: { sessionId: sid, shell: "powershell" },
+        });
+      }
 
       setTimeout(syncUp, 50);
       onReady(() => addTerminal());
     },
-    [addTerminal, syncUp, onReady],
+    [addTerminal, syncUp, onReady, initialLayout, onApiReady, onLayoutChange],
   );
 
   useEffect(() => {
@@ -139,6 +158,29 @@ export function DockviewLayout({
     return () => window.removeEventListener("keydown", handler);
   }, [visible, addTerminal]);
 
+  const dockviewRef = useRef<HTMLDivElement>(null);
+  const addTerminalRef = useRef(addTerminal);
+  /* eslint-disable react-hooks/refs */
+  addTerminalRef.current = addTerminal;
+  /* eslint-enable react-hooks/refs */
+
+  useEffect(() => {
+    const el = dockviewRef.current;
+    if (!el) return;
+    const onDblClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const inTabBar = target.closest(".dv-tabs-and-actions-container");
+      const onTab = target.closest(".dv-tab");
+      if (inTabBar && !onTab) {
+        e.preventDefault();
+        e.stopPropagation();
+        addTerminalRef.current();
+      }
+    };
+    el.addEventListener("dblclick", onDblClick, true);
+    return () => el.removeEventListener("dblclick", onDblClick, true);
+  }, []);
+
   return (
     <div
       className="h-full w-full"
@@ -152,11 +194,13 @@ export function DockviewLayout({
       }}
     >
       <DockviewReact
+        ref={dockviewRef}
         components={panelComponents}
         watermarkComponent={DefaultWatermark}
         rightHeaderActionsComponent={HeaderActions}
         theme={themeLight}
         disableTabsOverflowList={true}
+        defaultRenderer="always"
         onReady={handleReady}
         className="h-full w-full"
       />

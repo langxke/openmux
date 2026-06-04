@@ -10,7 +10,7 @@ import "dockview/dist/styles/dockview.css";
 import { TerminalPanel } from "./TerminalPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { HeaderActions } from "./HeaderActions";
-import { glaze } from "../lib/glaze-api";
+import { om } from "../lib/openmux-api";
 import { createTerminalId } from "../lib/terminalId";
 import { useZoomStore } from "../stores/zoomStore";
 
@@ -104,7 +104,10 @@ export function DockviewLayout({
 
       event.api.onDidRemovePanel((panel) => {
         const sid = panel.params?.sessionId as string | undefined;
-        if (sid) glaze().pty.kill(sid);
+        if (sid) {
+          om().pty.kill(sid);
+          useZoomStore.getState().removeSession(sid);
+        }
         setTimeout(syncUp, 50);
       });
 

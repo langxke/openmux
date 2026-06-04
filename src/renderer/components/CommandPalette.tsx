@@ -88,7 +88,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
             onChange={handleQueryChange}
             onKeyDown={handleKeyDown}
             placeholder="输入命令名称..."
-            className="flex-1 bg-transparent outline-none text-sm font-mono"
+            className="flex-1 bg-transparent outline-none text-sm font-mono placeholder:text-[var(--color-text-secondary)]"
             style={{ color: "var(--color-text)" }}
           />
         </div>

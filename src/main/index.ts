@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, clipboard } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, clipboard, webContents } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -13,7 +13,7 @@ function createWindow() {
     height: 650,
     minWidth: 600,
     minHeight: 400,
-    title: "Glaze",
+    title: "openmux",
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -37,6 +37,30 @@ function createWindow() {
   });
 
   mainWindow.webContents.on("did-attach-webview", (_event, wc) => {
+    wc.on("before-input-event", (event, input) => {
+      if (!input.control) return;
+      if (input.key === "=" || input.key === "+") {
+        event.preventDefault();
+        const current = wc.getZoomLevel();
+        wc.setZoomLevel(Math.min(5, current + 0.5));
+      } else if (input.key === "-") {
+        event.preventDefault();
+        const current = wc.getZoomLevel();
+        wc.setZoomLevel(Math.max(-5, current - 0.5));
+      } else if (input.key === "0") {
+        event.preventDefault();
+        wc.setZoomLevel(0);
+      }
+    });
+
+    // Redirect popups / window.open to navigate in-place
+    wc.setWindowOpenHandler(({ url }) => {
+      setImmediate(() => {
+        wc.loadURL(url);
+      });
+      return { action: "deny" };
+    });
+
     wc.on("context-menu", (_event, params) => {
       const template: Electron.MenuItemConstructorOptions[] = [
         { label: "复制", click: () => wc.copy() },
@@ -61,7 +85,9 @@ ipcMain.handle("pty:spawn", (_event, sessionId: string, shell: string, cwd: stri
     rows,
     cols,
     (data: string) => {
-      mainWindow?.webContents.send(`pty-output-${sessionId}`, data);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(`pty-output-${sessionId}`, data);
+      }
     },
   );
 });
@@ -114,6 +140,14 @@ ipcMain.handle("window:isMaximized", () => {
   return mainWindow?.isMaximized() ?? false;
 });
 
+ipcMain.handle("window:setZoom", (_event, level: number) => {
+  mainWindow?.webContents.setZoomLevel(level);
+});
+
+ipcMain.handle("window:getZoom", () => {
+  return mainWindow?.webContents.getZoomLevel() ?? 0;
+});
+
 // --- Clipboard IPC ---
 
 ipcMain.handle("clipboard:readText", () => {
@@ -122,6 +156,13 @@ ipcMain.handle("clipboard:readText", () => {
 
 ipcMain.handle("clipboard:writeText", (_event, text: string) => {
   clipboard.writeText(text);
+});
+
+ipcMain.handle("browser:setZoom", (_event, webContentsId: number, factor: number) => {
+  const wc = webContents.fromId(webContentsId);
+  if (wc && !wc.isDestroyed()) {
+    wc.setZoomFactor(factor);
+  }
 });
 
 // --- Workspace State IPC ---
@@ -184,6 +225,10 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.on("before-quit", () => {
+  ptyManager.disposeAll();
 });
 
 app.on("window-all-closed", () => {

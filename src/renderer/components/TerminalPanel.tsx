@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useXTerm } from "../hooks/useXTerm";
-import { glaze } from "../lib/glaze-api";
+import { om } from "../lib/openmux-api";
 import { useZoomStore } from "../stores/zoomStore";
 
 function basename(str: string): string {
@@ -30,13 +30,18 @@ export function TerminalPanel({
   sessionRef.current = sessionId;
   /* eslint-enable react-hooks/refs */
 
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleData = useCallback((data: string) => {
-    glaze().pty.write(sessionRef.current, data);
+    om().pty.write(sessionRef.current, data);
   }, []);
 
   const handleResize = useCallback((cols: number, rows: number) => {
-    glaze().pty.spawn(sessionRef.current, shell, cwd, rows, cols);
-  }, [shell, cwd]);
+    if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+    resizeTimerRef.current = setTimeout(() => {
+      om().pty.resize(sessionRef.current, rows, cols);
+    }, 150);
+  }, []);
 
   const { containerRef, terminal, write, focus } = useXTerm({
     onData: handleData,
@@ -65,7 +70,7 @@ export function TerminalPanel({
   // Register IPC listener before any effects fire, so PTY output
   // from the initial spawn isn't lost to a race with the effect.
   if (!offOutputRef.current) {
-    offOutputRef.current = glaze().pty.onOutput(sessionRef.current, (data: string) => {
+    offOutputRef.current = om().pty.onOutput(sessionRef.current, (data: string) => {
       writeRef.current(data);
     });
   }
@@ -76,16 +81,17 @@ export function TerminalPanel({
     // Re-register (first mount it's a no-op after cleanup, on deps
     // change it ensures the listener is live before the spawn below).
     offOutputRef.current?.();
-    offOutputRef.current = glaze().pty.onOutput(sid, (data: string) => {
+    offOutputRef.current = om().pty.onOutput(sid, (data: string) => {
       writeRef.current(data);
     });
 
-    glaze().pty.spawn(sid, shell, cwd, 0, 0);
+    om().pty.spawn(sid, shell, cwd, 0, 0);
 
     return () => {
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
       offOutputRef.current?.();
       offOutputRef.current = null;
-      glaze().pty.release(sid);
+      om().pty.release(sid);
     };
   }, [sessionId, shell, cwd]);
 
@@ -98,7 +104,7 @@ export function TerminalPanel({
   const handleContextMenu = useCallback(
     async (e: React.MouseEvent) => {
       e.preventDefault();
-      const action = await glaze().contextMenu.showTerminal();
+      const action = await om().contextMenu.showTerminal();
       if (!action) return;
 
       const term = terminal.current;
@@ -107,12 +113,12 @@ export function TerminalPanel({
       if (action === "copy") {
         const selection = term.getSelection();
         if (selection) {
-          await glaze().clipboard.writeText(selection);
+          await om().clipboard.writeText(selection);
         }
       } else if (action === "paste") {
-        const text = await glaze().clipboard.readText();
+        const text = await om().clipboard.readText();
         if (text) {
-          glaze().pty.write(sessionRef.current, text);
+          om().pty.write(sessionRef.current, text);
         }
       } else if (action === "selectAll") {
         term.selectAll();

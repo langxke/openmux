@@ -1,4 +1,4 @@
-# CLAUDE.md — Glaze
+# CLAUDE.md — openmux
 
 > Windows 原生 AI 编程终端，对标 macOS cmux（manaflow-ai/cmux）
 
@@ -33,9 +33,9 @@ Main Process (Electron):
 
 Renderer (TerminalPanel):
   useEffect:
-    glaze.pty.spawn(sid, ...)           ← IPC → main process ensureSession
-    glaze.pty.onOutput(sid, callback)   ← IPC channel `pty-output-${sid}`
-    return () => glaze.pty.release(sid) ← IPC → main process releaseSession
+    om.pty.spawn(sid, ...)           ← IPC → main process ensureSession
+    om.pty.onOutput(sid, callback)   ← IPC channel `pty-output-${sid}`
+    return () => om.pty.release(sid) ← IPC → main process releaseSession
 ```
 
 ### IPC 通信架构
@@ -105,7 +105,7 @@ pnpm lint         # 前端 lint
 | `src/main/browser-manager.ts` | BrowserView 管理（create/setBounds/destroy） |
 | `src/main/index.ts` | BrowserWindow + IPC handlers |
 | `src/preload/index.ts` | contextBridge API |
-| `src/renderer/lib/glaze-api.ts` | window.glaze 类型化封装 |
+| `src/renderer/lib/openmux-api.ts` | window.openmux 类型化封装 |
 | `src/renderer/hooks/useXTerm.ts` | xterm.js 初始化 |
 | `src/renderer/components/DockviewLayout.tsx` | 每个 workspace 的 dockview 实例 |
 | `src/renderer/components/TerminalPanel.tsx` | xterm.js + PTY session 绑定 |
@@ -146,3 +146,8 @@ pnpm lint         # 前端 lint
 | `.claude/notes/dockview-integration.md` | 右键菜单、面板渲染模式、光标覆盖、拖拽区域 |
 | `.claude/notes/workspace-persistence.md` | 布局持久化、启动竞态、URL 跟踪、序列化 |
 | `.claude/notes/ui-interactions.md` | Sidebar 拖拽、字号缩放、字体、CSS 经验 |
+| `.claude/knowhow/` | 结构化问题-解决方案经验库，查问题时先看这里 |
+
+## 经验库
+
+在解决问题时，先查阅 `.claude/knowhow/` 目录中是否有匹配的经验文档。解决问题后，将值得沉淀的经验记录到该目录。

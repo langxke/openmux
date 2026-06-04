@@ -136,10 +136,22 @@ class PtyManager {
     this.destroySession(id);
   }
 
+  /** Kill all sessions immediately. Call before app quit. */
+  disposeAll(): void {
+    for (const timer of this.releaseTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.releaseTimers.clear();
+    for (const id of this.sessions.keys()) {
+      this.destroySession(id);
+    }
+  }
+
   private destroySession(id: string): void {
     const session = this.sessions.get(id);
     if (!session) return;
     session.state = "exited";
+    session.ptyProcess.removeAllListeners("data");
     try {
       session.ptyProcess.kill();
     } catch {

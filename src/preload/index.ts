@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("glaze", {
+contextBridge.exposeInMainWorld("openmux", {
   pty: {
     spawn: (id: string, shell: string, cwd: string, rows: number, cols: number) =>
       ipcRenderer.invoke("pty:spawn", id, shell, cwd, rows, cols),
@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld("glaze", {
         ipcRenderer.removeListener("window:maximizeChange", handler);
       };
     },
+    setZoom: (level: number) => ipcRenderer.invoke("window:setZoom", level),
+    getZoom: () => ipcRenderer.invoke("window:getZoom"),
   },
   clipboard: {
     readText: () => ipcRenderer.invoke("clipboard:readText"),
@@ -49,5 +51,11 @@ contextBridge.exposeInMainWorld("glaze", {
   workspace: {
     load: () => ipcRenderer.invoke("workspace:load"),
     save: (state: unknown) => ipcRenderer.invoke("workspace:save", state),
+  },
+  browser: {
+    setZoom: (webContentsId: number, factor: number) =>
+      ipcRenderer.invoke("browser:setZoom", webContentsId, factor),
+    setup: (webContentsId: number) =>
+      ipcRenderer.invoke("browser:setup", webContentsId),
   },
 });

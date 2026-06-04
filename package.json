@@ -1,5 +1,5 @@
 {
-  "name": "glaze-app",
+  "name": "openmux",
   "private": true,
   "version": "0.0.0",
   "main": ".vite/build/main.js",

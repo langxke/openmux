@@ -6,7 +6,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { useSidebarStore } from "./stores/sidebarStore";
 import { useConfigStore } from "./stores/configStore";
 import { useZoomStore } from "./stores/zoomStore";
-import { glaze } from "./lib/glaze-api";
+import { om } from "./lib/openmux-api";
 import type { CustomCommand } from "./lib/types";
 import type { DockviewApi, SerializedDockview } from "dockview";
 
@@ -39,6 +39,7 @@ export default function App() {
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
   const configLoaded = useConfigStore((s) => s.loaded);
+  const uiZoom = useZoomStore((s) => s.uiZoom);
   const customCommands = useConfigStore(
     (s) => s.config?.customCommands ?? EMPTY_COMMANDS,
   );
@@ -56,6 +57,12 @@ export default function App() {
       useConfigStore.getState().load();
     }
   }, [configLoaded]);
+
+  // Persist when zoom changes
+  const sessionSizes = useZoomStore((s) => s.sessionSizes);
+  useEffect(() => {
+    persistWorkspace();
+  }, [uiZoom, sessionSizes]);
 
   // --- Workspace persistence ---
 
@@ -87,8 +94,9 @@ export default function App() {
         }),
         activeWorkspaceId: activeRef.current,
         sessionSizes: useZoomStore.getState().sessionSizes,
+        uiZoom: useZoomStore.getState().uiZoom,
       };
-      glaze().workspace.save(data);
+      om().workspace.save(data);
     }, 500);
   }, []);
 
@@ -97,7 +105,7 @@ export default function App() {
     if (restoredRef.current) return;
     restoredRef.current = true;
 
-    glaze().workspace.load().then((saved: any) => {
+    om().workspace.load().then((saved: any) => {
       if (saved?.workspaces?.length) {
         // Restore sidebar
         if (saved.sidebar) {
@@ -110,6 +118,11 @@ export default function App() {
         // Restore session font sizes
         if (saved.sessionSizes) {
           useZoomStore.setState({ sessionSizes: saved.sessionSizes });
+        }
+
+        // Restore UI zoom
+        if (saved.uiZoom) {
+          useZoomStore.setState({ uiZoom: saved.uiZoom });
         }
 
         // Restore workspaces
@@ -155,6 +168,16 @@ export default function App() {
       panelCount: meta?.panelCount ?? 0,
     };
   });
+
+  const handleSelectWorkspace = useCallback((id: string) => {
+    setActiveWorkspaceId(id);
+    const api = dockviewApis.current.get(id);
+    if (api) {
+      const activePanel = api.activePanel;
+      const sid = activePanel?.params?.sessionId as string | undefined;
+      useZoomStore.getState().setActiveSession(sid ?? null);
+    }
+  }, []);
 
   const handleStateChange = useCallback(
     (wsId: string, state: { panels: { id: string; title: string; shell: string }[] }) => {
@@ -286,6 +309,16 @@ export default function App() {
     document.addEventListener("mouseup", handleMouseUp);
   }, [persistWorkspace]);
 
+  const isTerminalFocused = () => {
+    const el = document.activeElement;
+    return !!(el && el.closest(".xterm"));
+  };
+
+  const isInBrowserPanel = () => {
+    const el = document.activeElement;
+    return !!(el && (el.closest("webview") || el.closest("[data-browser-panel]")));
+  };
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "p") {
@@ -300,13 +333,25 @@ export default function App() {
         createWorkspace();
       } else if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
-        useZoomStore.getState().zoomIn();
+        if (isTerminalFocused()) {
+          useZoomStore.getState().zoomTerminalIn();
+        } else if (!isInBrowserPanel()) {
+          useZoomStore.getState().zoomIn();
+        }
       } else if (e.ctrlKey && e.key === "-") {
         e.preventDefault();
-        useZoomStore.getState().zoomOut();
+        if (isTerminalFocused()) {
+          useZoomStore.getState().zoomTerminalOut();
+        } else if (!isInBrowserPanel()) {
+          useZoomStore.getState().zoomOut();
+        }
       } else if (e.ctrlKey && e.key === "0") {
         e.preventDefault();
-        useZoomStore.getState().zoomReset();
+        if (isTerminalFocused()) {
+          useZoomStore.getState().zoomTerminalReset();
+        } else if (!isInBrowserPanel()) {
+          useZoomStore.getState().zoomReset();
+        }
       }
     },
     [toggleSidebar, createWorkspace],
@@ -318,44 +363,45 @@ export default function App() {
   }, [handleKeyDown]);
 
   return (
-    <div className="h-full w-full flex flex-col">
-      <TitleBar />
-      <div className="flex-1 flex min-h-0">
-        <Sidebar
-          ref={sidebarRef}
-          workspaces={workspaceList}
-          activeWorkspaceId={activeWorkspaceId}
-          onSelectWorkspace={setActiveWorkspaceId}
-          onNewWorkspace={createWorkspace}
-          onRemoveWorkspace={removeWorkspace}
-          onRenameWorkspace={renameWorkspace}
-          onReorderWorkspaces={reorderWorkspaces}
-        />
-        {!sidebarCollapsed && (
+    <div className="h-full w-full flex">
+      <Sidebar
+        ref={sidebarRef}
+        zoom={uiZoom}
+        workspaces={workspaceList}
+        activeWorkspaceId={activeWorkspaceId}
+        onSelectWorkspace={handleSelectWorkspace}
+        onNewWorkspace={createWorkspace}
+        onRemoveWorkspace={removeWorkspace}
+        onRenameWorkspace={renameWorkspace}
+        onReorderWorkspaces={reorderWorkspaces}
+      />
+      {!sidebarCollapsed && (
+        <div
+          className="shrink-0 cursor-col-resize flex justify-center"
+          style={{
+            width: 6,
+            marginLeft: -3,
+            zIndex: 10,
+          }}
+          onMouseDown={handleResizeStart}
+          onMouseEnter={(e) => {
+            const bar = e.currentTarget.firstChild as HTMLElement;
+            if (bar) bar.style.backgroundColor = "var(--color-accent)";
+          }}
+          onMouseLeave={(e) => {
+            const bar = e.currentTarget.firstChild as HTMLElement;
+            if (bar) bar.style.backgroundColor = "transparent";
+          }}
+        >
           <div
-            className="shrink-0 cursor-col-resize"
-            style={{ width: 5 }}
-            onMouseDown={handleResizeStart}
-            onMouseEnter={(e) => {
-              const line = e.currentTarget.firstChild as HTMLElement;
-              if (line) line.style.backgroundColor = "var(--color-accent)";
-            }}
-            onMouseLeave={(e) => {
-              const line = e.currentTarget.firstChild as HTMLElement;
-              if (line) line.style.backgroundColor = "var(--color-border)";
-            }}
-          >
-            <div
-              className="transition-colors duration-150"
-              style={{
-                width: 1,
-                height: "100%",
-                backgroundColor: "var(--color-border)",
-              }}
-            />
-          </div>
-        )}
-        <main className="flex-1 min-w-0" style={{ position: "relative" }}>
+            className="transition-colors duration-150"
+            style={{ width: 1, height: "100%", backgroundColor: "transparent" }}
+          />
+        </div>
+      )}
+      <div className="flex-1 flex flex-col min-w-0">
+        <TitleBar />
+        <main className="flex-1 min-h-0" style={{ position: "relative" }}>
           {workspaceIds.map((wsId) => (
             <DockviewLayout
               key={wsId}
@@ -369,13 +415,13 @@ export default function App() {
             />
           ))}
         </main>
-        <CommandPalette
-          key={paletteKey}
-          isOpen={paletteOpen}
-          onClose={() => setPaletteOpen(false)}
-          commands={customCommands}
-        />
       </div>
+      <CommandPalette
+        key={paletteKey}
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={customCommands}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
-import { glaze } from "../lib/glaze-api";
+import { om } from "../lib/openmux-api";
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -10,6 +10,7 @@ declare global {
         React.HTMLAttributes<HTMLElement> & {
           src?: string;
           preload?: string;
+          partition?: string;
         },
         HTMLElement
       >;
@@ -24,22 +25,17 @@ interface WebviewElement extends HTMLElement {
   reload(): void;
   goBack(): void;
   goForward(): void;
-  setZoomLevel(level: number): void;
+  setZoomFactor(factor: number): void;
   addEventListener(
-    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated" | "did-navigate" | "did-navigate-in-page",
+    type: "dom-ready" | "did-finish-load" | "page-title-updated" | "did-navigate" | "did-navigate-in-page" | "new-window",
     listener: EventListener,
     options?: boolean | AddEventListenerOptions,
   ): void;
   removeEventListener(
-    type: "dom-ready" | "did-finish-load" | "ipc-message" | "page-title-updated" | "did-navigate" | "did-navigate-in-page",
+    type: "dom-ready" | "did-finish-load" | "page-title-updated" | "did-navigate" | "did-navigate-in-page" | "new-window",
     listener: EventListener,
     options?: boolean | EventListenerOptions,
   ): void;
-}
-
-interface IpcMessageEvent extends Event {
-  channel: string;
-  args: unknown[];
 }
 
 export function BrowserPanel({
@@ -56,18 +52,22 @@ export function BrowserPanel({
   const [inputValue, setInputValue] = useState(initialUrl);
   const [preloadPath, setPreloadPath] = useState<string | null>(null);
 
+  // Unique partition per browser panel isolates zoom/cookies/cache per webview
+  const partition = useMemo(() => `browser-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, []);
+
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    glaze().getWebviewPreloadPath().then(setPreloadPath);
+    om().getWebviewPreloadPath().then((p) => {
+      setPreloadPath(p);
+      setReady(true);
+    });
   }, []);
 
-  const applyZoom = useCallback(() => {
+  const applyZoom = useCallback((level?: number) => {
     const wv = webviewRef.current;
     if (!wv) return;
-    try {
-      wv.setZoomLevel(zoomRef.current);
-    } catch {
-      // not ready
-    }
+    const lvl = level ?? zoomRef.current;
+    wv.setZoomFactor(Math.pow(1.2, lvl));
   }, []);
 
   const navigate = useCallback(
@@ -86,22 +86,31 @@ export function BrowserPanel({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") navigate();
+      if (e.key === "Enter") {
+        navigate();
+      } else if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        e.stopPropagation();
+        zoomRef.current = Math.min(5, zoomRef.current + 0.5);
+        applyZoom();
+      } else if (e.ctrlKey && e.key === "-") {
+        e.preventDefault();
+        e.stopPropagation();
+        zoomRef.current = Math.max(-5, zoomRef.current - 0.5);
+        applyZoom();
+      } else if (e.ctrlKey && e.key === "0") {
+        e.preventDefault();
+        e.stopPropagation();
+        zoomRef.current = 0;
+        applyZoom();
+      }
     },
-    [navigate],
+    [navigate, applyZoom],
   );
 
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv) return;
-
-    const onIpcMessage = (e: Event) => {
-      const msg = e as IpcMessageEvent;
-      if (msg.channel === "zoom" && typeof msg.args[0] === "number") {
-        zoomRef.current = msg.args[0];
-        applyZoom();
-      }
-    };
 
     const onTitleUpdated = (e: Event) => {
       const event = e as unknown as { title: string };
@@ -116,29 +125,19 @@ export function BrowserPanel({
       }
     };
 
-    const onReady = () => {
-      applyZoom();
-    };
-
-    wv.addEventListener("dom-ready", onReady);
-    wv.addEventListener("did-finish-load", onReady);
-    wv.addEventListener("ipc-message", onIpcMessage);
     wv.addEventListener("page-title-updated", onTitleUpdated as EventListener);
     wv.addEventListener("did-navigate", onNavigate);
     wv.addEventListener("did-navigate-in-page", onNavigate);
 
     return () => {
-      wv.removeEventListener("dom-ready", onReady);
-      wv.removeEventListener("did-finish-load", onReady);
-      wv.removeEventListener("ipc-message", onIpcMessage);
       wv.removeEventListener("page-title-updated", onTitleUpdated as EventListener);
       wv.removeEventListener("did-navigate", onNavigate);
       wv.removeEventListener("did-navigate-in-page", onNavigate);
     };
-  }, [applyZoom, preloadPath, api]);
+  }, [api, ready, preloadPath]);
 
   return (
-    <div className="h-full w-full flex flex-col bg-white">
+    <div className="h-full w-full flex flex-col bg-white" data-browser-panel="">
       <div
         className="flex items-center gap-0.5 px-1 py-1 border-b shrink-0"
         style={{ borderColor: "var(--color-border, #e5e5e5)" }}
@@ -189,11 +188,14 @@ export function BrowserPanel({
           placeholder="Enter URL..."
         />
       </div>
-      {preloadPath ? (
+      {ready && preloadPath ? (
         <webview
           ref={webviewRef}
           preload={preloadPath}
           src={initialUrl}
+          partition={partition}
+          // @ts-expect-error Electron webview attribute
+          allowpopups="true"
           className="flex-1 w-full"
         />
       ) : (

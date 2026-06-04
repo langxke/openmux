@@ -3,8 +3,8 @@ import { VitePlugin } from "@electron-forge/plugin-vite";
 
 export default {
   packagerConfig: {
-    name: "Glaze",
-    executableName: "glaze",
+    name: "openmux",
+    executableName: "openmux",
   },
   // Skip auto-rebuild during start — needs VS Dev Cmd Prompt for node-pty.
   // Rebuild manually when needed: npx electron-rebuild -f -w node-pty
@@ -13,7 +13,7 @@ export default {
   },
   makers: [
     new MakerSquirrel({
-      name: "Glaze",
+      name: "openmux",
       setupIcon: undefined,
     }),
   ],

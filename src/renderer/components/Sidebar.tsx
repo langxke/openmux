@@ -9,6 +9,7 @@ interface WorkspaceRow {
 }
 
 interface SidebarProps {
+  zoom?: number;
   workspaces: WorkspaceRow[];
   activeWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
@@ -19,6 +20,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
+  zoom = 1,
   workspaces,
   activeWorkspaceId,
   onSelectWorkspace,
@@ -101,6 +103,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
       style={{
         width: collapsed ? 40 : sidebarWidth,
         backgroundColor: "var(--color-sidebar)",
+        borderRight: "1px solid var(--color-border)",
       }}
     >
       {/* Header */}
@@ -116,10 +119,10 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
       >
         {!collapsed && (
           <span
-            className="text-xs font-semibold tracking-wide select-none"
-            style={{ color: "var(--color-text-dim)", fontSize: 10 }}
+            className="select-none font-medium"
+            style={{ color: "var(--color-text)", fontSize: 13 }}
           >
-            WORKSPACES
+            openmux
           </span>
         )}
         <button
@@ -148,7 +151,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
       </div>
 
       {/* Workspace rows */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingTop: 2 }}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingTop: 2, zoom }}>
         {workspaces.map((ws, index) => {
           const isActive = ws.id === activeWorkspaceId;
           const isHovered = ws.id === hoveredId;
@@ -181,9 +184,6 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                   : isHovered
                     ? "var(--color-hover)"
                     : "transparent",
-                borderLeft: isActive
-                  ? "2px solid var(--color-accent)"
-                  : "2px solid transparent",
                 borderTop: isDragOver
                   ? "2px solid var(--color-accent)"
                   : "2px solid transparent",
@@ -249,7 +249,9 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onRemoveWorkspace(ws.id);
+                        if (window.confirm(`确定要关闭工作区 "${ws.name}" 吗？`)) {
+                          onRemoveWorkspace(ws.id);
+                        }
                       }}
                       className="shrink-0 ml-1 text-xs rounded-full w-4 h-4 flex items-center justify-center"
                       style={{ color: "var(--color-text-dim)" }}

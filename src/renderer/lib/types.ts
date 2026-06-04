@@ -16,7 +16,7 @@ export interface TabData {
   panels: PanelData[];
 }
 
-export interface GlazeConfig {
+export interface OpenMuxConfig {
   defaultShell: "powershell" | "cmd";
   fontSize: number;
   fontFamily: string;

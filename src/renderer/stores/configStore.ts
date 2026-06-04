@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import type { GlazeConfig } from "../lib/types";
-import { glaze } from "../lib/glaze-api";
+import type { OpenMuxConfig } from "../lib/types";
+import { om } from "../lib/openmux-api";
 
 interface ConfigState {
-  config: GlazeConfig | null;
+  config: OpenMuxConfig | null;
   loaded: boolean;
   load: () => Promise<void>;
 }
@@ -13,7 +13,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   loaded: false,
   load: async () => {
     try {
-      const cfg = await glaze().config.get();
+      const cfg = await om().config.get();
       set({
         config: {
           defaultShell: cfg.defaultShell as "powershell" | "cmd",

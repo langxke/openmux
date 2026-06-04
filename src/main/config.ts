@@ -7,7 +7,7 @@ export interface CustomCommand {
   command: string;
 }
 
-export interface GlazeConfig {
+export interface OpenMuxConfig {
   defaultShell: "powershell" | "cmd";
   fontSize: number;
   fontFamily: string;
@@ -16,7 +16,7 @@ export interface GlazeConfig {
   keybindings: Record<string, string>;
 }
 
-function defaultConfig(): GlazeConfig {
+function defaultConfig(): OpenMuxConfig {
   return {
     defaultShell: "powershell",
     fontSize: 14,
@@ -37,15 +37,15 @@ function defaultConfig(): GlazeConfig {
 
 function configPath(): string {
   const userDataPath = app.getPath("userData");
-  return path.join(userDataPath, "glaze.json");
+  return path.join(userDataPath, "openmux.json");
 }
 
-export function getConfig(): GlazeConfig {
+export function getConfig(): OpenMuxConfig {
   const cp = configPath();
   try {
     if (fs.existsSync(cp)) {
       const content = fs.readFileSync(cp, "utf-8");
-      return JSON.parse(content) as GlazeConfig;
+      return JSON.parse(content) as OpenMuxConfig;
     }
   } catch {
     // Corrupted config — fall through to defaults

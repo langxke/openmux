@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
-import { getConfig } from "./config";
+import { getConfig, saveConfig } from "./config";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -15,6 +15,7 @@ function createWindow() {
     minHeight: 400,
     title: "openmux",
     frame: false,
+    icon: path.join(__dirname, "..", "..", "src", "assets", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -112,6 +113,10 @@ ipcMain.handle("pty:release", (_event, sessionId: string) => {
 
 ipcMain.handle("config:get", () => {
   return getConfig();
+});
+
+ipcMain.handle("config:save", (_event, config: unknown) => {
+  saveConfig(config as Parameters<typeof saveConfig>[0]);
 });
 
 ipcMain.handle("getWebviewPreloadPath", () => {

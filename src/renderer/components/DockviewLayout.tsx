@@ -10,6 +10,7 @@ import "dockview/dist/styles/dockview.css";
 import { TerminalPanel } from "./TerminalPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { HeaderActions } from "./HeaderActions";
+import { EditableTab } from "./EditableTab";
 import { om } from "../lib/openmux-api";
 import { createTerminalId } from "../lib/terminalId";
 import { useZoomStore } from "../stores/zoomStore";
@@ -45,7 +46,7 @@ const panelComponents = {
 };
 
 interface DockviewLayoutState {
-  panels: { id: string; title: string; shell: string }[];
+  panels: { id: string; title: string; shell: string; sessionId?: string }[];
 }
 
 interface DockviewLayoutProps {
@@ -77,6 +78,7 @@ export function DockviewLayout({
       id: (p.params?.sessionId as string) ?? p.id,
       title: (p.title as string) || "Terminal",
       shell: (p.params?.shell as string) || "powershell",
+      sessionId: p.params?.sessionId as string | undefined,
     }));
     onStateChange({ panels });
   }, [onStateChange]);
@@ -204,6 +206,7 @@ export function DockviewLayout({
         theme={themeLight}
         disableTabsOverflowList={true}
         defaultRenderer="always"
+        defaultTabComponent={EditableTab}
         onReady={handleReady}
         className="h-full w-full"
       />

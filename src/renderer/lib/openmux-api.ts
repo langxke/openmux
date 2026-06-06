@@ -11,6 +11,7 @@ interface OpenMuxPty {
 
 interface OpenMuxConfigApi {
   get(): Promise<OpenMuxConfig>;
+  save(config: OpenMuxConfig): Promise<void>;
 }
 
 interface OpenMuxWindowApi {

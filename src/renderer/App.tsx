@@ -31,7 +31,7 @@ export default function App() {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(workspaceIds[0]);
   const [workspaceMeta, setWorkspaceMeta] = useState<Map<string, WorkspaceEntry>>(() => {
     const m = new Map<string, WorkspaceEntry>();
-    m.set(workspaceIds[0], { id: workspaceIds[0], name: `Workspace 1`, panelCount: 0 });
+    m.set(workspaceIds[0], { id: workspaceIds[0], name: "New Workspace", panelCount: 0 });
     return m;
   });
 
@@ -180,12 +180,12 @@ export default function App() {
   }, []);
 
   const handleStateChange = useCallback(
-    (wsId: string, state: { panels: { id: string; title: string; shell: string }[] }) => {
+    (wsId: string, state: { panels: { id: string; title: string; shell: string; sessionId?: string }[] }) => {
       setWorkspaceMeta((prev) => {
         const next = new Map(prev);
         const existing = next.get(wsId);
         if (existing) {
-          next.set(wsId, { ...existing, panelCount: state.panels.length });
+          next.set(wsId, { ...existing, panelCount: state.panels.filter((p) => p.sessionId).length });
         }
         return next;
       });
@@ -215,7 +215,7 @@ export default function App() {
     setWorkspaceIds((prev) => [...prev, newId]);
     setWorkspaceMeta((prev) => {
       const next = new Map(prev);
-      next.set(newId, { id: newId, name: `Workspace ${n}`, panelCount: 0 });
+      next.set(newId, { id: newId, name: "New Workspace", panelCount: 0 });
       return next;
     });
     setActiveWorkspaceId(newId);
@@ -232,7 +232,7 @@ export default function App() {
         const fallback = `ws-${n}`;
         setWorkspaceMeta((map) => {
           const m2 = new Map(map);
-          m2.set(fallback, { id: fallback, name: `Workspace ${n}`, panelCount: 0 });
+          m2.set(fallback, { id: fallback, name: "New Workspace", panelCount: 0 });
           return m2;
         });
         setActiveWorkspaceId(fallback);

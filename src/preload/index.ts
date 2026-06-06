@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld("openmux", {
   },
   config: {
     get: () => ipcRenderer.invoke("config:get"),
+    save: (config: unknown) => ipcRenderer.invoke("config:save", config),
   },
   getWebviewPreloadPath: () => ipcRenderer.invoke("getWebviewPreloadPath"),
   window: {

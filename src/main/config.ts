@@ -62,3 +62,14 @@ export function getConfig(): OpenMuxConfig {
   }
   return config;
 }
+
+export function saveConfig(config: OpenMuxConfig): void {
+  const cp = configPath();
+  try {
+    const dir = path.dirname(cp);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(cp, JSON.stringify(config, null, 2), "utf-8");
+  } catch {
+    // Best effort
+  }
+}

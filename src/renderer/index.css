@@ -12,7 +12,7 @@
   --color-border: #e5e5e7;
   --color-border-light: #f0f0f0;
   --color-hover: rgba(0, 0, 0, 0.04);
-  --color-selected: rgba(0, 122, 255, 0.12);
+  --color-selected: rgba(0, 70, 180, 0.85);
   --color-red: #ff3b30;
   --color-green: #34c759;
   --color-yellow: #ff9500;
@@ -110,7 +110,7 @@ body,
 }
 
 .dv-tab .dv-default-tab .dv-default-tab-action:hover {
-  background-color: var(--color-hover) !important;
+  background-color: transparent !important;
 }
 
 .dv-tab .dv-default-tab .dv-default-tab-action .dv-svg {
@@ -177,4 +177,16 @@ body,
 .xterm .xterm-screen,
 .xterm .xterm-text-layer {
   cursor: default !important;
+}
+
+/* Popover animation */
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

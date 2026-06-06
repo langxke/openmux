@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, forwardRef } from "react";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { useState, useRef, useCallback, useEffect, forwardRef } from "react";
+import { ChevronLeft, HelpCircle, Terminal } from "lucide-react";
 import { useSidebarStore } from "../stores/sidebarStore";
 
 interface WorkspaceRow {
@@ -31,7 +31,6 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
 }, ref) {
   const collapsed = useSidebarStore((s) => s.collapsed);
   const sidebarWidth = useSidebarStore((s) => s.width);
-  const isResizing = useSidebarStore((s) => s.isResizing);
   const toggle = useSidebarStore((s) => s.toggle);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,6 +38,11 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const helpBtnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0, vh: 0 });
+  const helpTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const startRename = useCallback((id: string, currentName: string) => {
     setEditingId(id);
@@ -96,10 +100,19 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
     setDragOverIndex(null);
   }, []);
 
+  useEffect(() => {
+    if (!helpOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHelpOpen(false);
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [helpOpen]);
+
   return (
     <aside
       ref={ref}
-      className={`h-full flex flex-col shrink-0 ${isResizing ? "" : "transition-all duration-200"}`}
+      className="h-full flex flex-col shrink-0"
       style={{
         width: collapsed ? 40 : sidebarWidth,
         backgroundColor: "var(--color-sidebar)",
@@ -111,43 +124,21 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
         className="flex items-center shrink-0"
         style={{
           height: 28,
-          paddingLeft: 12,
-          paddingRight: 12,
-          justifyContent: collapsed ? "center" : "space-between",
+          paddingLeft: collapsed ? 0 : 12,
+          justifyContent: collapsed ? "center" : "flex-start",
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
-        {!collapsed && (
-          <span
-            className="select-none font-medium"
-            style={{ color: "var(--color-text)", fontSize: 13 }}
-          >
-            openmux
-          </span>
+        {collapsed ? (
+          <Terminal size={16} strokeWidth={1.5} style={{ color: "var(--color-accent)" }} />
+        ) : (
+          <div className="flex items-center gap-2 select-none">
+            <Terminal size={16} strokeWidth={1.5} style={{ color: "var(--color-accent)" }} />
+            <span className="font-medium" style={{ color: "var(--color-text)", fontSize: 15 }}>
+              openmux
+            </span>
+          </div>
         )}
-        <button
-          onClick={toggle}
-          className="flex items-center justify-center w-5 h-5 rounded transition-colors select-none"
-          style={{
-            color: "var(--color-text-dim)",
-            fontSize: 12,
-            WebkitAppRegion: "no-drag",
-          } as React.CSSProperties}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.backgroundColor =
-              "var(--color-hover)";
-            (e.currentTarget as HTMLElement).style.color = "var(--color-text)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.backgroundColor =
-              "transparent";
-            (e.currentTarget as HTMLElement).style.color =
-              "var(--color-text-dim)";
-          }}
-          title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
-        >
-          {collapsed ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronLeft size={14} strokeWidth={1.5} />}
-        </button>
       </div>
 
       {/* Workspace rows */}
@@ -177,7 +168,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
-              className="cursor-pointer select-none transition-colors mx-1 rounded"
+              className="cursor-pointer select-none transition-colors mx-1"
               style={{
                 backgroundColor: isActive
                   ? "var(--color-selected)"
@@ -187,7 +178,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                 borderTop: isDragOver
                   ? "2px solid var(--color-accent)"
                   : "2px solid transparent",
-                padding: collapsed ? "8px 0" : "6px 10px",
+                padding: collapsed ? "14px 0" : "14px 14px",
                 marginBottom: 1,
                 textAlign: collapsed ? "center" : "left",
                 opacity: dragIndex === index ? 0.4 : 1,
@@ -198,7 +189,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                   className="text-xs block"
                   title={ws.name}
                   style={{
-                    color: isActive ? "var(--color-accent)" : "var(--color-text-dim)",
+                    color: isActive ? "#ffffff" : "var(--color-text-dim)",
                   }}
                 >
                   {ws.name.charAt(0)}
@@ -221,9 +212,9 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                   onClick={(e) => e.stopPropagation()}
                   className="w-full bg-transparent outline-none text-xs font-medium"
                   style={{
-                    color: "var(--color-text)",
+                    color: "#ffffff",
                     borderBottom: "1px solid var(--color-accent)",
-                    fontSize: 12,
+                    fontSize: 22,
                   }}
                   maxLength={32}
                 />
@@ -232,14 +223,14 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                   <div className="min-w-0 flex-1">
                     <div
                       className="text-xs font-medium truncate"
-                      style={{ color: "var(--color-text)", fontSize: 12 }}
+                      style={{ color: isActive ? "#ffffff" : "var(--color-text)", fontSize: 22 }}
                     >
                       {ws.name}
                     </div>
                     {ws.panelCount > 0 && (
                       <div
                         className="text-xs truncate"
-                        style={{ color: "var(--color-text-dim)", fontSize: 10 }}
+                        style={{ color: isActive ? "rgba(255,255,255,0.7)" : "var(--color-text-dim)", fontSize: 18 }}
                       >
                         {ws.panelCount} terminal{ws.panelCount !== 1 ? "s" : ""}
                       </div>
@@ -271,9 +262,9 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
           role="button"
           tabIndex={0}
           onClick={onNewWorkspace}
-          className="cursor-pointer select-none transition-colors mx-1 rounded"
+          className="cursor-pointer select-none transition-colors mx-1"
           style={{
-            padding: collapsed ? "8px 0" : "6px 10px",
+            padding: collapsed ? "14px 0" : "14px 14px",
             textAlign: collapsed ? "center" : "left",
             color: "var(--color-text-dim)",
           }}
@@ -286,25 +277,162 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
               "transparent";
           }}
         >
-          <span className="text-xs" style={{ fontSize: 11 }}>
+          <span className="text-xs" style={{ fontSize: 22 }}>
             {collapsed ? "+" : "+ New Workspace"}
           </span>
         </div>
       </div>
 
-      {/* Footer */}
-      {!collapsed && (
-        <div
-          className="shrink-0 px-3 py-2 text-xs"
+      {/* Bottom icon bar */}
+      <div
+        className="shrink-0 flex items-center"
+        style={{
+          borderTop: "1px solid var(--color-border)",
+          padding: collapsed ? "6px 0" : "6px 8px",
+          justifyContent: collapsed ? "center" : "flex-start",
+          flexDirection: collapsed ? "column" : "row",
+          gap: collapsed ? 4 : 2,
+        }}
+      >
+        <button
+          className="flex items-center justify-center rounded transition-colors select-none"
           style={{
-            borderTop: "1px solid var(--color-border)",
+            width: 28,
+            height: 28,
             color: "var(--color-text-dim)",
-            fontSize: 10,
           }}
+          onClick={toggle}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-hover)";
+            (e.currentTarget as HTMLElement).style.color = "var(--color-text)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "var(--color-text-dim)";
+          }}
+          title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
         >
-          {workspaces.length} workspace{workspaces.length !== 1 ? "s" : ""}
+          <ChevronLeft size={16} strokeWidth={1.5} style={{ transform: collapsed ? "rotate(180deg)" : "none" }} />
+        </button>
+        {!collapsed && (
+        <div style={{ position: "relative" }}>
+          <button
+            ref={helpBtnRef}
+            className="flex items-center justify-center rounded transition-colors select-none"
+            style={{
+              width: 28,
+              height: 28,
+              color: helpOpen ? "var(--color-text)" : "var(--color-text-dim)",
+              backgroundColor: helpOpen ? "var(--color-hover)" : "transparent",
+            }}
+            onMouseEnter={() => {
+              if (helpTimerRef.current) clearTimeout(helpTimerRef.current);
+              const rect = helpBtnRef.current?.getBoundingClientRect();
+              if (rect) {
+                setPopoverPos({
+                  top: rect.top,
+                  left: rect.left,
+                  vh: window.innerHeight,
+                });
+              }
+              setHelpOpen(true);
+            }}
+            onMouseLeave={() => {
+              helpTimerRef.current = setTimeout(() => setHelpOpen(false), 150);
+            }}
+            title="快捷键帮助"
+          >
+            <HelpCircle size={16} strokeWidth={1.5} />
+          </button>
+          {helpOpen && (
+            <div
+              ref={popoverRef}
+              className="rounded-lg"
+              style={{
+                position: "fixed",
+                bottom: popoverPos.vh - popoverPos.top + 8,
+                left: popoverPos.left,
+                minWidth: 230,
+                backgroundColor: "var(--color-bg)",
+                border: "1px solid var(--color-border)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)",
+                zIndex: 100,
+                animation: "popover-in 150ms ease-out",
+                padding: "12px 20px",
+              }}
+              onMouseEnter={() => {
+                if (helpTimerRef.current) clearTimeout(helpTimerRef.current);
+              }}
+              onMouseLeave={() => {
+                setHelpOpen(false);
+              }}
+            >
+              {/* Arrow pointing down */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  bottom: -5,
+                  width: 10,
+                  height: 10,
+                  backgroundColor: "var(--color-bg)",
+                  border: "1px solid var(--color-border)",
+                  borderLeft: "none",
+                  borderTop: "none",
+                  transform: "rotate(45deg)",
+                }}
+              />
+              <div className="py-0.5">
+                {[
+                  { keys: ["Ctrl", "= / +"], desc: "放大" },
+                  { keys: ["Ctrl", "-"], desc: "缩小" },
+                  { keys: ["Ctrl", "0"], desc: "重置缩放" },
+                  { keys: ["Ctrl", "B"], desc: "折叠侧边栏" },
+                  { keys: ["Ctrl", "N"], desc: "新建终端" },
+                  { keys: ["Ctrl", "Shift", "N"], desc: "新建工作区" },
+                  { keys: ["Ctrl", "P"], desc: "命令面板" },
+                  { keys: [] as string[], desc: "双击标题或 Tab 可改名" },
+                ].map((s) => (
+                  <div
+                    key={s.desc}
+                    className="flex items-center justify-between py-1.5"
+                  >
+                    <span style={{ fontSize: 12, color: s.keys.length > 0 ? "var(--color-text)" : "var(--color-text-dim)" }}>
+                      {s.desc}
+                    </span>
+                    {s.keys.length > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        {s.keys.map((k, i) => (
+                          <span key={k}>
+                            <kbd
+                              style={{
+                                fontSize: 10,
+                                fontFamily: "inherit",
+                                color: "var(--color-text-secondary)",
+                                backgroundColor: "var(--color-hover)",
+                                border: "1px solid var(--color-border)",
+                                borderRadius: 3,
+                                padding: "1px 4px",
+                                boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.1)",
+                              }}
+                            >
+                              {k}
+                            </kbd>
+                            {i < s.keys.length - 1 && (
+                              <span style={{ fontSize: 10, color: "var(--color-text-dim)", margin: "0 1px" }}>+</span>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 });

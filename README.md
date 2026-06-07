@@ -1,41 +1,46 @@
-# Glaze
+![Platform](https://img.shields.io/badge/platform-Windows-blue?logo=windows)
+![License](https://img.shields.io/badge/license-GPL--3.0-green)
+![Release](https://img.shields.io/github/v/release/langxke/openmux?label=latest)
 
-Windows 原生 AI 编程终端，对标 macOS [cmux](https://github.com/manaflow-ai/cmux)。
+# openmux
 
-## 快速开始
+Windows 上专为 AI 编程开发的终端工作台。
 
-```bash
-pnpm install
-pnpm start
-```
+![openmux 主界面](./screenshots/main.png)
 
-## 技术栈
+## 为什么有 openmux
 
-| 层 | 选型 |
-|---|---|
-| 桌面壳 | Electron |
-| 前端框架 | React 19 + TypeScript |
-| 构建工具 | Electron Forge + Vite |
-| UI | Tailwind CSS 4 |
-| 分屏布局 | dockview |
-| 终端渲染 | xterm.js |
-| PTY | node-pty (ConPTY) |
-| 状态管理 | Zustand |
-| 包管理 | pnpm |
+Mac 上有 [cmux](https://github.com/manaflow-ai/cmux) 这样的 AI 编程终端，既有终端多路复用（multiplexer），又可以内嵌浏览器。但回到 Windows 发现没有类似产品。openmux 就是来填这个空的。
 
-## 核心功能
+## 核心特性
 
-- **分屏布局** — 同一窗口内多个终端面板自由分屏排列，拖拽分割条调整大小
-- **标签页系统** — 每个标签页维护独立的分屏布局树，支持拖拽排序和重命名
-- **拖拽分屏** — 拖拽标签到面板边缘自动创建分屏，dockview 内置 drop zone 指示器
-- **多窗口** — 快捷键新建独立窗口，每个窗口有独立的标签集合
-- **工作区侧边栏** — 左侧可折叠侧边栏，展示 Git 分支、工作目录等信息
-- **命令面板** — `Ctrl+P` 唤起，在 `glaze.json` 中定义自定义命令
-- **配置文件** — `%APPDATA%/glaze/glaze.json`，支持自定义 Shell、字体、主题、快捷键
+- **多工作区** — 独立工作空间，每个保留独立的分屏布局，切换不中断后台进程
+- **分屏布局** — 水平/垂直分割面板，拖拽调整大小
+- **内嵌浏览器** — 面板中直接浏览网页，独立 session 隔离
+- **cmux 风格面板** — 标签页、拖拽分屏、右键菜单，与 cmux 操作习惯一致
+- **布局持久化** — 关闭自动保存工作区布局，启动时恢复面板排列
 
-## Quality Gates
+## 安装
 
-```bash
-pnpm typecheck    # TypeScript 类型检查
-pnpm lint         # ESLint
-```
+从 [Releases](https://github.com/langxke/openmux/releases) 页面下载最新安装包，运行安装即可。
+
+## 使用方式
+
+### 快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+B` | 折叠/展开侧边栏 |
+| `Ctrl+N` | 新建终端（工作区空白时可用） |
+| `Ctrl+Shift+N` | 新建工作区 |
+| `Ctrl+=` / `Ctrl++` | 放大（终端字号 / UI 缩放） |
+| `Ctrl+-` | 缩小 |
+| `Ctrl+0` | 重置缩放 |
+
+### 鼠标操作
+
+双击标签栏空白处可快速新建终端。
+
+## 许可证
+
+[GPL-3.0](LICENSE)

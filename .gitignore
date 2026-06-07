@@ -3,5 +3,5 @@ dist/
 .vite/
 out/
 *.log
-src-tauri/
 .playwright-mcp/
+.claude/

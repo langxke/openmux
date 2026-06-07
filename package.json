@@ -1,7 +1,9 @@
 {
   "name": "openmux",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Windows 上专为 AI 编程开发的终端工作台",
+  "author": "langxke",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "concurrently -k -n r,e \"vite --config vite.renderer.config.ts\" \"vite build --config vite.main.config.ts && vite build --config vite.preload.config.ts && vite build --config vite.webview.config.ts && wait-on http://localhost:5173 && cross-env ELECTRON_RENDERER_URL=http://localhost:5173 electron .\"",

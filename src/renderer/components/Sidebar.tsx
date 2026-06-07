@@ -244,11 +244,11 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                           onRemoveWorkspace(ws.id);
                         }
                       }}
-                      className="shrink-0 ml-1 text-xs rounded-full w-4 h-4 flex items-center justify-center"
-                      style={{ color: "var(--color-text-dim)" }}
+                      className="shrink-0 ml-1 rounded-full w-6 h-6 flex items-center justify-center"
+                      style={{ color: isActive ? "#fff" : "var(--color-text-dim)", fontSize: 16 }}
                       title="关闭工作区"
                     >
-                      ×
+                      ✕
                     </button>
                   )}
                 </div>

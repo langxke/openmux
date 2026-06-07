@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import { copyFileSync, mkdirSync } from "node:fs";
 
 export default defineConfig({
+  define: {
+    "process.env": "process.env",
+  },
   publicDir: false,
   build: {
     outDir: ".vite/build",

@@ -2,17 +2,11 @@ import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 
-export interface CustomCommand {
-  name: string;
-  command: string;
-}
-
 export interface OpenMuxConfig {
   defaultShell: "powershell" | "cmd";
   fontSize: number;
   fontFamily: string;
   theme: string;
-  customCommands: CustomCommand[];
   keybindings: Record<string, string>;
 }
 
@@ -22,14 +16,9 @@ function defaultConfig(): OpenMuxConfig {
     fontSize: 14,
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace',
     theme: "dark",
-    customCommands: [
-      { name: "npm dev", command: "npm run dev" },
-      { name: "git status", command: "git status" },
-    ],
     keybindings: {
       newTab: "Ctrl+T",
       closeTab: "Ctrl+W",
-      commandPalette: "Ctrl+P",
       toggleSidebar: "Ctrl+B",
     },
   };

@@ -21,13 +21,7 @@ export interface OpenMuxConfig {
   fontSize: number;
   fontFamily: string;
   theme: "dark";
-  customCommands: CustomCommand[];
   keybindings: Record<string, string>;
-}
-
-export interface CustomCommand {
-  name: string;
-  command: string;
 }
 
 export interface WorkspaceInfo {

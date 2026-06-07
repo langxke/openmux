@@ -1,0 +1,24 @@
+appId: com.openmux.app
+productName: openmux
+directories:
+  output: out
+asar: false
+npmRebuild: false
+files:
+  - ".vite/**/*"
+  - package.json
+extraResources:
+  - from: src/assets/icon.png
+    to: icon.png
+win:
+  target: nsis
+  icon: src/assets/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  language: 2052
+  installerIcon: src/assets/icon.ico
+  uninstallerIcon: src/assets/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: openmux

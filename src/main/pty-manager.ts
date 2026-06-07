@@ -42,13 +42,17 @@ class PtyManager {
 
     const existing = this.sessions.get(id);
     if (existing) {
-      if (existing.state === "releasing") {
-        existing.state = "ready";
+      if (existing.state === "exited") {
+        this.sessions.delete(id);
+      } else {
+        if (existing.state === "releasing") {
+          existing.state = "ready";
+        }
+        if (rows > 0 && cols > 0 && (existing.cols !== cols || existing.rows !== rows)) {
+          this.doResize(existing, rows, cols);
+        }
+        return existing;
       }
-      if (rows > 0 && cols > 0 && (existing.cols !== cols || existing.rows !== rows)) {
-        this.doResize(existing, rows, cols);
-      }
-      return existing;
     }
 
     const session = this.createSession(id, shell, cwd, rows, cols, onOutput);
@@ -65,12 +69,19 @@ class PtyManager {
     onOutput?: (data: string) => void,
   ): PtySession {
     const shellPath = this.getShellPath(shell);
+    const env = {
+      ...(process.env as Record<string, string>),
+      TERM: "xterm-256color",
+      // PowerShell needs SystemRoot to load crypto DLLs (error 8009001d without it).
+      // Electron's process.env may not inherit it depending on how the app was launched.
+      SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    };
     const ptyProcess = pty.spawn(shellPath, [], {
       name: "xterm-256color",
       cols: cols > 0 ? cols : 80,
       rows: rows > 0 ? rows : 24,
       cwd: cwd === "." ? process.cwd() : cwd,
-      env: { ...(process.env as Record<string, string>), TERM: "xterm-256color" },
+      env,
     });
 
     if (onOutput) {
@@ -105,9 +116,13 @@ class PtyManager {
   }
 
   private doResize(session: PtySession, rows: number, cols: number): void {
-    session.ptyProcess.resize(cols, rows);
-    session.cols = cols;
-    session.rows = rows;
+    try {
+      session.ptyProcess.resize(cols, rows);
+      session.cols = cols;
+      session.rows = rows;
+    } catch {
+      // PTY already exited between check and resize — ignore
+    }
   }
 
   /** Start release countdown. If ensureSession not called within delay, kills PTY. */

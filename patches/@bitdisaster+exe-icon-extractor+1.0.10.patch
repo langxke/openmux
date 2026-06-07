@@ -1,0 +1,13 @@
+diff --git a/node_modules/@bitdisaster/exe-icon-extractor/src/module.cc b/node_modules/@bitdisaster/exe-icon-extractor/src/module.cc
+index 1234567..abcdefg 100644
+--- a/node_modules/@bitdisaster/exe-icon-extractor/src/module.cc
++++ b/node_modules/@bitdisaster/exe-icon-extractor/src/module.cc
+@@ -266,7 +266,7 @@ static napi_value SaveFile(napi_env env, napi_callback_info info) {
+ 	return returnValue;
+ }
+ 
+-void throwIfNotSuccess(napi_env env, napi_status status, char* msg) {
++void throwIfNotSuccess(napi_env env, napi_status status, const char* msg) {
+ 	if (status != napi_ok) {
+ 		napi_throw_error(env, NULL, msg);
+ 	}

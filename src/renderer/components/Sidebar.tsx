@@ -390,7 +390,6 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                   { keys: ["Ctrl", "B"], desc: "折叠侧边栏" },
                   { keys: ["Ctrl", "N"], desc: "新建终端" },
                   { keys: ["Ctrl", "Shift", "N"], desc: "新建工作区" },
-                  { keys: ["Ctrl", "P"], desc: "命令面板" },
                   { keys: [] as string[], desc: "双击标题或 Tab 可改名" },
                 ].map((s) => (
                   <div

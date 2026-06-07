@@ -5,6 +5,15 @@ import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
 import { getConfig, saveConfig } from "./config";
 
+// node-pty's internal _deferNoArgs queue can fire resize calls after the PTY
+// has already exited.  Catch those here instead of letting them crash the app.
+process.on("uncaughtException", (error) => {
+  if (error instanceof Error && error.message?.includes("pty that has already exited")) {
+    return; // harmless race — suppress
+  }
+  console.error(error);
+});
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -15,7 +24,7 @@ function createWindow() {
     minHeight: 400,
     title: "openmux",
     frame: false,
-    icon: path.join(__dirname, "..", "..", "src", "assets", "icon.png"),
+    icon: path.join(__dirname, "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -27,7 +36,7 @@ function createWindow() {
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.loadFile(path.join(__dirname, "../renderer/main_window/index.html"));
   }
 
   mainWindow.on("maximize", () => {

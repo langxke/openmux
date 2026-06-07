@@ -20,7 +20,6 @@ export const useConfigStore = create<ConfigState>((set) => ({
           fontSize: cfg.fontSize,
           fontFamily: cfg.fontFamily,
           theme: cfg.theme as "dark",
-          customCommands: cfg.customCommands ?? [],
           keybindings: cfg.keybindings ?? {},
         },
         loaded: true,

@@ -2,15 +2,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { DockviewLayout } from "./components/DockviewLayout";
 import { Sidebar } from "./components/Sidebar";
 import { TitleBar } from "./components/TitleBar";
-import { CommandPalette } from "./components/CommandPalette";
 import { useSidebarStore } from "./stores/sidebarStore";
 import { useConfigStore } from "./stores/configStore";
 import { useZoomStore } from "./stores/zoomStore";
 import { om } from "./lib/openmux-api";
-import type { CustomCommand } from "./lib/types";
 import type { DockviewApi, SerializedDockview } from "dockview";
-
-const EMPTY_COMMANDS: CustomCommand[] = [];
 
 interface WorkspaceEntry {
   id: string;
@@ -21,9 +17,6 @@ interface WorkspaceEntry {
 let nextWorkspaceNum = 1;
 
 export default function App() {
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [paletteKey, setPaletteKey] = useState(0);
-
   const [workspaceIds, setWorkspaceIds] = useState<string[]>(() => {
     const id = `ws-${nextWorkspaceNum++}`;
     return [id];
@@ -40,9 +33,6 @@ export default function App() {
   const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
   const configLoaded = useConfigStore((s) => s.loaded);
   const uiZoom = useZoomStore((s) => s.uiZoom);
-  const customCommands = useConfigStore(
-    (s) => s.config?.customCommands ?? EMPTY_COMMANDS,
-  );
   const hasLoaded = useRef(false);
   const sidebarRef = useRef<HTMLElement>(null);
   const dockviewApis = useRef<Map<string, DockviewApi>>(new Map());
@@ -321,11 +311,7 @@ export default function App() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "p") {
-        e.preventDefault();
-        setPaletteKey((k) => k + 1);
-        setPaletteOpen(true);
-      } else if (e.ctrlKey && e.key === "b") {
+      if (e.ctrlKey && e.key === "b") {
         e.preventDefault();
         toggleSidebar();
       } else if (e.ctrlKey && e.shiftKey && e.key === "N") {
@@ -416,12 +402,6 @@ export default function App() {
           ))}
         </main>
       </div>
-      <CommandPalette
-        key={paletteKey}
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        commands={customCommands}
-      />
     </div>
   );
 }

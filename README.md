@@ -4,43 +4,45 @@
 
 # openmux
 
-Windows 上专为 AI 编程开发的终端工作台。
+A terminal workspace built for AI-powered development on Windows.
 
-![openmux 主界面](./screenshots/main.png)
+[中文](./README_zh.md)
 
-## 为什么有 openmux
+![openmux Main Window](./screenshots/main.png)
 
-Mac 上有 [cmux](https://github.com/manaflow-ai/cmux) 这样的 AI 编程终端，既有终端多路复用（multiplexer），又可以内嵌浏览器。但回到 Windows 发现没有类似产品。openmux 就是来填这个空的。
+## Why openmux
 
-## 核心特性
+[cmux](https://github.com/manaflow-ai/cmux) is a great AI-native terminal multiplexer, but it's macOS only. On Windows, there is no equivalent. openmux fills that gap.
 
-- **多工作区** — 独立工作空间，每个保留独立的分屏布局，切换不中断后台进程
-- **分屏布局** — 水平/垂直分割面板，拖拽调整大小
-- **内嵌浏览器** — 面板中直接浏览网页，独立 session 隔离
-- **cmux 风格面板** — 标签页、拖拽分屏、右键菜单，与 cmux 操作习惯一致
-- **布局持久化** — 关闭自动保存工作区布局，启动时恢复面板排列
+## Features
 
-## 安装
+- **Multiple Workspaces** — Independent workspaces, each with its own split layout. Background processes keep running when switching.
+- **Split Panes** — Horizontal and vertical splits, drag to resize.
+- **Embedded Browser** — Browse the web directly in a panel, with isolated sessions per panel.
+- **cmux-style Panels** — Tabs, drag-to-split, context menus. Familiar to cmux users.
+- **Layout Persistence** — Workspace layouts are saved on exit and restored on launch.
 
-从 [Releases](https://github.com/langxke/openmux/releases) 页面下载最新安装包，运行安装即可。
+## Install
 
-## 使用方式
+Download the latest installer from [Releases](https://github.com/langxke/openmux/releases) and run it.
 
-### 快捷键
+## Usage
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Ctrl+B` | 折叠/展开侧边栏 |
-| `Ctrl+N` | 新建终端（工作区空白时可用） |
-| `Ctrl+Shift+N` | 新建工作区 |
-| `Ctrl+=` / `Ctrl++` | 放大（终端字号 / UI 缩放） |
-| `Ctrl+-` | 缩小 |
-| `Ctrl+0` | 重置缩放 |
+### Keyboard Shortcuts
 
-### 鼠标操作
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+B` | Toggle sidebar |
+| `Ctrl+N` | New terminal (when workspace is empty) |
+| `Ctrl+Shift+N` | New workspace |
+| `Ctrl+=` / `Ctrl++` | Zoom in (terminal font / UI) |
+| `Ctrl+-` | Zoom out |
+| `Ctrl+0` | Reset zoom |
 
-双击标签栏空白处可快速新建终端。
+### Mouse
 
-## 许可证
+Double-click the empty space in the tab bar to create a new terminal.
+
+## License
 
 [GPL-3.0](LICENSE)

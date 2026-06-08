@@ -5,6 +5,11 @@ import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
 import { getConfig, saveConfig } from "./config";
 
+// 开发环境使用独立的 userData 目录，避免与已安装版本冲突
+if (!app.isPackaged) {
+  app.setPath("userData", path.join(app.getPath("userData"), "../openmux-dev"));
+}
+
 // node-pty's internal _deferNoArgs queue can fire resize calls after the PTY
 // has already exited.  Catch those here instead of letting them crash the app.
 process.on("uncaughtException", (error) => {

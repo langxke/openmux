@@ -47,10 +47,19 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
   const startRename = useCallback((id: string, currentName: string) => {
     setEditingId(id);
     setEditName(currentName);
-    setTimeout(() => inputRef.current?.focus(), 10);
+    // rAF + setTimeout ensures the input is in the DOM before we try to focus.
+    // Without this race, the input never gets focus, so onBlur never fires and
+    // the user sees no cursor — they can only backspace (browser-native behaviour
+    // on a non-focused input) but not type new text.
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    });
   }, []);
 
-  const commitRename = useCallback(
+const commitRename = useCallback(
     (id: string) => {
       if (editName.trim()) {
         onRenameWorkspace(id, editName.trim());
@@ -210,27 +219,26 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
                     e.stopPropagation();
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full bg-transparent outline-none text-xs font-medium"
+                  className="w-full bg-transparent outline-none text-sm font-medium"
                   style={{
                     color: "#ffffff",
                     borderBottom: "1px solid var(--color-accent)",
-                    fontSize: 22,
-                  }}
+                    }}
                   maxLength={32}
                 />
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <div
-                      className="text-xs font-medium truncate"
-                      style={{ color: isActive ? "#ffffff" : "var(--color-text)", fontSize: 22 }}
+                      className="text-sm font-medium truncate"
+                      style={{ color: isActive ? "#ffffff" : "var(--color-text)" }}
                     >
                       {ws.name}
                     </div>
                     {ws.panelCount > 0 && (
                       <div
                         className="text-xs truncate"
-                        style={{ color: isActive ? "rgba(255,255,255,0.7)" : "var(--color-text-dim)", fontSize: 18 }}
+                        style={{ color: isActive ? "rgba(255,255,255,0.7)" : "var(--color-text-dim)" }}
                       >
                         {ws.panelCount} terminal{ws.panelCount !== 1 ? "s" : ""}
                       </div>
@@ -277,7 +285,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
               "transparent";
           }}
         >
-          <span className="text-xs" style={{ fontSize: 22 }}>
+          <span className="text-sm">
             {collapsed ? "+" : "+ New Workspace"}
           </span>
         </div>

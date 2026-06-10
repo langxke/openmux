@@ -171,8 +171,10 @@ body,
   background: var(--color-text-dim);
 }
 
-/* Terminal cursor override */
-.xterm,
+.xterm {
+  font-family: "Consolas", "Microsoft YaHei", "微软雅黑", monospace !important;
+}
+
 .xterm .xterm-viewport,
 .xterm .xterm-screen,
 .xterm .xterm-text-layer {

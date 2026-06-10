@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
-import { om } from "../lib/openmux-api";
+import { useOpenMux } from "../hooks/useOpenMux";
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -47,28 +47,25 @@ export function BrowserPanel({
 }) {
   const webviewRef = useRef<WebviewElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const zoomRef = useRef(0);
   const initialUrl = params.initialUrl ?? "https://www.bing.com";
   const [inputValue, setInputValue] = useState(initialUrl);
   const [preloadPath, setPreloadPath] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const om = useOpenMux();
 
-  // Unique partition per browser panel isolates zoom/cookies/cache per webview
-  const partition = useMemo(() => `browser-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, []);
+  // Unique partition per browser panel isolates zoom/cookies/cache per webview.
+  // Lazy state init so the random ID is generated once without impure render calls.
+  const [partition] = useState(
+    () => `browser-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
 
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    om().getWebviewPreloadPath().then((p) => {
+    om.getWebviewPreloadPath().then((p) => {
       setPreloadPath(p);
       setReady(true);
     });
-  }, []);
-
-  const applyZoom = useCallback((level?: number) => {
-    const wv = webviewRef.current;
-    if (!wv) return;
-    const lvl = level ?? zoomRef.current;
-    wv.setZoomFactor(Math.pow(1.2, lvl));
-  }, []);
+  }, [om]);
 
   const navigate = useCallback(
     (url?: string) => {
@@ -88,24 +85,11 @@ export function BrowserPanel({
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter") {
         navigate();
-      } else if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
-        e.preventDefault();
-        e.stopPropagation();
-        zoomRef.current = Math.min(5, zoomRef.current + 0.5);
-        applyZoom();
-      } else if (e.ctrlKey && e.key === "-") {
-        e.preventDefault();
-        e.stopPropagation();
-        zoomRef.current = Math.max(-5, zoomRef.current - 0.5);
-        applyZoom();
-      } else if (e.ctrlKey && e.key === "0") {
-        e.preventDefault();
-        e.stopPropagation();
-        zoomRef.current = 0;
-        applyZoom();
       }
+      // Zoom is handled by main-process did-attach-webview → before-input-event
+      // (using setZoomLevel). No renderer-side zoom logic to avoid dual-scale conflicts.
     },
-    [navigate, applyZoom],
+    [navigate],
   );
 
   useEffect(() => {
@@ -178,12 +162,14 @@ export function BrowserPanel({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onDragStart={(e) => e.preventDefault()}
           className="flex-1 px-2 py-0.5 text-xs rounded outline-none"
           style={{
             marginLeft: 8,
             backgroundColor: "#ffffff",
-            color: "var(--color-text, #1d1d1f)",
+            color: focused ? "var(--color-text, #1d1d1f)" : "#4b5563",
           }}
           placeholder="Enter URL..."
         />

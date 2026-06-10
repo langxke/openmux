@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, forwardRef } from "react";
 import { ChevronLeft, HelpCircle, Terminal } from "lucide-react";
 import { useSidebarStore } from "../stores/sidebarStore";
+import { useRenameInput } from "../hooks/useRenameInput";
 
 interface WorkspaceRow {
   id: string;
@@ -44,19 +45,13 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar({
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0, vh: 0 });
   const helpTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
+  const isEditing = editingId !== null;
+
+  useRenameInput(inputRef, isEditing);
+
   const startRename = useCallback((id: string, currentName: string) => {
     setEditingId(id);
     setEditName(currentName);
-    // rAF + setTimeout ensures the input is in the DOM before we try to focus.
-    // Without this race, the input never gets focus, so onBlur never fires and
-    // the user sees no cursor — they can only backspace (browser-native behaviour
-    // on a non-focused input) but not type new text.
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 0);
-    });
   }, []);
 
 const commitRename = useCallback(

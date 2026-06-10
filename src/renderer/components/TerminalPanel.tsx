@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
-import { useXTerm } from "../hooks/useXTerm";
-import { om } from "../lib/openmux-api";
+import { useXTerm, LIGHT_THEME, DARK_THEME } from "../hooks/useXTerm";
+import { useOpenMux } from "../hooks/useOpenMux";
 import { useZoomStore } from "../stores/zoomStore";
+import { useConfigStore } from "../stores/configStore";
 
 function basename(str: string): string {
   const i = Math.max(str.lastIndexOf("/"), str.lastIndexOf("\\"));
@@ -24,6 +25,8 @@ export function TerminalPanel({
   const offOutputRef = useRef<(() => void) | null>(null);
   const writeRef = useRef<(data: string) => void>(() => {});
   const fontSize = useZoomStore((s) => s.sessionSizes[sessionId] ?? s.terminalFontSize);
+  const config = useConfigStore((s) => s.config);
+  const om = useOpenMux();
 
   const sessionRef = useRef(sessionId);
   /* eslint-disable react-hooks/refs */
@@ -33,20 +36,30 @@ export function TerminalPanel({
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleData = useCallback((data: string) => {
-    om().pty.write(sessionRef.current, data);
-  }, []);
+    om.pty.write(sessionRef.current, data);
+  }, [om.pty]);
 
   const handleResize = useCallback((cols: number, rows: number) => {
-    if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+    if (resizeTimerRef.current) {
+      clearTimeout(resizeTimerRef.current);
+    }
+    om.pty.resize(sessionRef.current, rows, cols);
+    // Minimal trailing guard: ensure the last resize during rapid-fire events
+    // arrives even if the leading call gets lost in the IPC queue.
     resizeTimerRef.current = setTimeout(() => {
-      om().pty.resize(sessionRef.current, rows, cols);
-    }, 150);
-  }, []);
+      resizeTimerRef.current = null;
+      om.pty.resize(sessionRef.current, rows, cols);
+    }, 100);
+  }, [om.pty]);
+
+  const terminalTheme = config?.theme === "dark" ? DARK_THEME : LIGHT_THEME;
 
   const { containerRef, terminal, write, focus } = useXTerm({
     onData: handleData,
     onResize: handleResize,
     fontSize,
+    fontFamily: config?.fontFamily,
+    theme: terminalTheme,
   });
 
   useEffect(() => {
@@ -67,10 +80,15 @@ export function TerminalPanel({
   writeRef.current = write;
   /* eslint-enable react-hooks/refs */
 
-  // Register IPC listener before any effects fire, so PTY output
-  // from the initial spawn isn't lost to a race with the effect.
+  // Register IPC listener during render phase so PTY output from the initial
+  // spawn isn't lost to a race with the mount effect. This intentional render-phase
+  // access is safe because (a) the callback is stable (it reads writeRef.current,
+  // which only changes when the xterm hook re-initializes), and (b) the offOutputRef
+  // guard ensures it only runs once.
+  // eslint-disable-next-line react-hooks/refs
   if (!offOutputRef.current) {
-    offOutputRef.current = om().pty.onOutput(sessionRef.current, (data: string) => {
+    // eslint-disable-next-line react-hooks/refs
+    offOutputRef.current = om.pty.onOutput(sessionRef.current, (data: string) => {
       writeRef.current(data);
     });
   }
@@ -81,19 +99,22 @@ export function TerminalPanel({
     // Re-register (first mount it's a no-op after cleanup, on deps
     // change it ensures the listener is live before the spawn below).
     offOutputRef.current?.();
-    offOutputRef.current = om().pty.onOutput(sid, (data: string) => {
+    offOutputRef.current = om.pty.onOutput(sid, (data: string) => {
       writeRef.current(data);
     });
 
-    om().pty.spawn(sid, shell, cwd, 0, 0);
+    // Use sensible defaults until the fit-addon measures the real viewport.
+    // Spawning at (0,0) causes the shell to start with no width, which
+    // misplaces the cursor (e.g. "PS D:\..." followed by garbage characters).
+    om.pty.spawn(sid, shell, cwd, 80, 24);
 
     return () => {
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
       offOutputRef.current?.();
       offOutputRef.current = null;
-      om().pty.release(sid);
+      om.pty.release(sid);
     };
-  }, [sessionId, shell, cwd]);
+  }, [sessionId, shell, cwd, om.pty]);
 
   useEffect(() => {
     focus();
@@ -101,10 +122,11 @@ export function TerminalPanel({
     return () => clearTimeout(timer);
   }, [focus]);
 
+  /* eslint-disable react-hooks/preserve-manual-memoization -- terminal is a stable RefObject */
   const handleContextMenu = useCallback(
     async (e: React.MouseEvent) => {
       e.preventDefault();
-      const action = await om().contextMenu.showTerminal();
+      const action = await om.contextMenu.showTerminal();
       if (!action) return;
 
       const term = terminal.current;
@@ -113,19 +135,20 @@ export function TerminalPanel({
       if (action === "copy") {
         const selection = term.getSelection();
         if (selection) {
-          await om().clipboard.writeText(selection);
+          await om.clipboard.writeText(selection);
         }
       } else if (action === "paste") {
-        const text = await om().clipboard.readText();
+        const text = await om.clipboard.readText();
         if (text) {
-          om().pty.write(sessionRef.current, text);
+          om.pty.write(sessionRef.current, text);
         }
       } else if (action === "selectAll") {
         term.selectAll();
       }
     },
-    [terminal],
+    [terminal, om.contextMenu, om.clipboard, om.pty],
   );
+  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   return (
     <div

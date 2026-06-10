@@ -1,4 +1,5 @@
 import * as pty from "node-pty";
+import { EventEmitter } from "events";
 
 type Shell = "powershell" | "cmd";
 type PtyState = "opening" | "ready" | "releasing" | "exited";
@@ -47,9 +48,6 @@ class PtyManager {
       } else {
         if (existing.state === "releasing") {
           existing.state = "ready";
-        }
-        if (rows > 0 && cols > 0 && (existing.cols !== cols || existing.rows !== rows)) {
-          this.doResize(existing, rows, cols);
         }
         return existing;
       }
@@ -166,7 +164,7 @@ class PtyManager {
     const session = this.sessions.get(id);
     if (!session) return;
     session.state = "exited";
-    session.ptyProcess.removeAllListeners("data");
+    (session.ptyProcess as unknown as EventEmitter).removeAllListeners("data");
     try {
       session.ptyProcess.kill();
     } catch {

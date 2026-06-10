@@ -56,7 +56,5 @@ contextBridge.exposeInMainWorld("openmux", {
   browser: {
     setZoom: (webContentsId: number, factor: number) =>
       ipcRenderer.invoke("browser:setZoom", webContentsId, factor),
-    setup: (webContentsId: number) =>
-      ipcRenderer.invoke("browser:setup", webContentsId),
   },
 });

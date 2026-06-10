@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu, clipboard, webContents } from "electron";
-import fs from "node:fs";
+import { app, BrowserWindow, Menu } from "electron";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { ptyManager } from "./pty-manager";
-import { getConfig, saveConfig } from "./config";
+import { registerPtyHandlers } from "./pty-handlers";
+import { registerConfigHandlers } from "./config-handlers";
+import { registerWindowHandlers, registerClipboardHandlers, registerBrowserHandler, registerWebviewHandler } from "./window-handlers";
+import { registerWorkspaceHandlers } from "./workspace-handlers";
+import { registerContextMenuHandlers } from "./context-menu-handlers";
 
 // 开发环境使用独立的 userData 目录，避免与已安装版本冲突
 if (!app.isPackaged) {
@@ -20,6 +22,10 @@ process.on("uncaughtException", (error) => {
 });
 
 let mainWindow: BrowserWindow | null = null;
+
+function getMainWindow() {
+  return mainWindow;
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -51,6 +57,10 @@ function createWindow() {
     mainWindow?.webContents.send("window:maximizeChange", false);
   });
 
+  // Webview zoom — single authority in main process via before-input-event.
+  // BrowserPanel no longer maintains its own zoom state; all webview zoom
+  // flows through this handler to avoid dual-scale (zoomLevel vs zoomFactor)
+  // conflicts.
   mainWindow.webContents.on("did-attach-webview", (_event, wc) => {
     wc.on("before-input-event", (event, input) => {
       if (!input.control) return;
@@ -68,10 +78,20 @@ function createWindow() {
       }
     });
 
-    // Redirect popups / window.open to navigate in-place
+    // Redirect popups / window.open to a new browser tab.
+    // Only allow http/https URLs to prevent injection via javascript: or
+    // other dangerous protocols. Dispatch via executeJavaScript to avoid
+    // a persistent issue with ipcRenderer.on delivery for the dedicated channel.
     wc.setWindowOpenHandler(({ url }) => {
+      if (!url.startsWith("http:") && !url.startsWith("https:")) {
+        return { action: "deny" };
+      }
       setImmediate(() => {
-        wc.loadURL(url);
+        if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+          mainWindow.webContents.executeJavaScript(
+            `window.dispatchEvent(new CustomEvent('openmux:openBrowserTab', { detail: ${JSON.stringify(url)} }))`,
+          );
+        }
       });
       return { action: "deny" };
     });
@@ -90,148 +110,16 @@ function createWindow() {
   });
 }
 
-// --- PTY IPC ---
+// --- Register IPC handlers (grouped by theme) ---
 
-ipcMain.handle("pty:spawn", (_event, sessionId: string, shell: string, cwd: string, rows: number, cols: number) => {
-  ptyManager.ensureSession(
-    sessionId,
-    shell as "powershell" | "cmd",
-    cwd,
-    rows,
-    cols,
-    (data: string) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send(`pty-output-${sessionId}`, data);
-      }
-    },
-  );
-});
-
-ipcMain.handle("pty:write", (_event, sessionId: string, data: string) => {
-  ptyManager.write(sessionId, data);
-});
-
-ipcMain.handle("pty:resize", (_event, sessionId: string, rows: number, cols: number) => {
-  ptyManager.resize(sessionId, rows, cols);
-});
-
-ipcMain.handle("pty:kill", (_event, sessionId: string) => {
-  ptyManager.disposeSession(sessionId);
-});
-
-ipcMain.handle("pty:release", (_event, sessionId: string) => {
-  ptyManager.releaseSession(sessionId);
-});
-
-// --- Config IPC ---
-
-ipcMain.handle("config:get", () => {
-  return getConfig();
-});
-
-ipcMain.handle("config:save", (_event, config: unknown) => {
-  saveConfig(config as Parameters<typeof saveConfig>[0]);
-});
-
-ipcMain.handle("getWebviewPreloadPath", () => {
-  return pathToFileURL(path.join(__dirname, "webview.js")).toString();
-});
-
-// --- Window control IPC ---
-
-ipcMain.handle("window:minimize", () => {
-  mainWindow?.minimize();
-});
-
-ipcMain.handle("window:maximize", () => {
-  if (mainWindow?.isMaximized()) {
-    mainWindow.unmaximize();
-  } else {
-    mainWindow?.maximize();
-  }
-});
-
-ipcMain.handle("window:close", () => {
-  mainWindow?.close();
-});
-
-ipcMain.handle("window:isMaximized", () => {
-  return mainWindow?.isMaximized() ?? false;
-});
-
-ipcMain.handle("window:setZoom", (_event, level: number) => {
-  mainWindow?.webContents.setZoomLevel(level);
-});
-
-ipcMain.handle("window:getZoom", () => {
-  return mainWindow?.webContents.getZoomLevel() ?? 0;
-});
-
-// --- Clipboard IPC ---
-
-ipcMain.handle("clipboard:readText", () => {
-  return clipboard.readText();
-});
-
-ipcMain.handle("clipboard:writeText", (_event, text: string) => {
-  clipboard.writeText(text);
-});
-
-ipcMain.handle("browser:setZoom", (_event, webContentsId: number, factor: number) => {
-  const wc = webContents.fromId(webContentsId);
-  if (wc && !wc.isDestroyed()) {
-    wc.setZoomFactor(factor);
-  }
-});
-
-// --- Workspace State IPC ---
-
-function workspaceStatePath(): string {
-  return path.join(app.getPath("userData"), "workspaces.json");
-}
-
-ipcMain.handle("workspace:load", () => {
-  try {
-    const p = workspaceStatePath();
-    if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, "utf-8"));
-    }
-  } catch {
-    // corrupted or missing — return null
-  }
-  return null;
-});
-
-ipcMain.handle("workspace:save", (_event, state: unknown) => {
-  try {
-    const dir = path.dirname(workspaceStatePath());
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(workspaceStatePath(), JSON.stringify(state, null, 2), "utf-8");
-  } catch {
-    // best effort
-  }
-});
-
-// --- Context Menu IPC ---
-
-ipcMain.handle("context-menu:terminal", async (event) => {
-  return new Promise<string | null>((resolve) => {
-    const menu = Menu.buildFromTemplate([
-      { label: "复制", click: () => resolve("copy") },
-      { label: "粘贴", click: () => resolve("paste") },
-      { label: "全选", click: () => resolve("selectAll") },
-    ]);
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) {
-      resolve(null);
-      return;
-    }
-    menu.popup({
-      window: win,
-      callback: () => resolve(null),
-    });
-  });
-});
+registerPtyHandlers(getMainWindow);
+registerConfigHandlers();
+registerWindowHandlers(getMainWindow);
+registerClipboardHandlers();
+registerBrowserHandler();
+registerWebviewHandler();
+registerWorkspaceHandlers();
+registerContextMenuHandlers();
 
 // --- App lifecycle ---
 

@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import type { TerminalSession } from "../lib/types";
+
+interface TerminalSession {
+  id: string;
+  shell: "powershell" | "cmd";
+  cwd: string;
+}
 
 interface TerminalStore {
   sessions: Map<string, TerminalSession>;

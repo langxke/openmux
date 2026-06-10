@@ -1,25 +1,25 @@
 import { create } from "zustand";
 import type { OpenMuxConfig } from "../lib/types";
-import { om } from "../lib/openmux-api";
+import type { OpenMuxAPI } from "../hooks/useOpenMux.types";
 
 interface ConfigState {
   config: OpenMuxConfig | null;
   loaded: boolean;
-  load: () => Promise<void>;
+  load: (api: OpenMuxAPI) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
   config: null,
   loaded: false,
-  load: async () => {
+  load: async (api) => {
     try {
-      const cfg = await om().config.get();
+      const cfg = await api.config.get();
       set({
         config: {
           defaultShell: cfg.defaultShell as "powershell" | "cmd",
           fontSize: cfg.fontSize,
           fontFamily: cfg.fontFamily,
-          theme: cfg.theme as "dark",
+          theme: cfg.theme,
           keybindings: cfg.keybindings ?? {},
         },
         loaded: true,

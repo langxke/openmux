@@ -1,21 +1,14 @@
 import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-
-export interface OpenMuxConfig {
-  defaultShell: "powershell" | "cmd";
-  fontSize: number;
-  fontFamily: string;
-  theme: string;
-  keybindings: Record<string, string>;
-}
+import type { OpenMuxConfig } from "../shared/types";
 
 function defaultConfig(): OpenMuxConfig {
   return {
     defaultShell: "powershell",
     fontSize: 14,
-    fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace',
-    theme: "dark",
+    fontFamily: '"Consolas", "Microsoft YaHei", "微软雅黑", monospace',
+    theme: "light",
     keybindings: {
       newTab: "Ctrl+T",
       closeTab: "Ctrl+W",

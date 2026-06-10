@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { IDockviewDefaultTabProps } from "dockview";
+import { useRenameInput } from "../hooks/useRenameInput";
 
 export function EditableTab(props: IDockviewDefaultTabProps) {
   const { api, containerApi: _containerApi, hideClose, closeActionOverride } = props;
@@ -19,12 +20,7 @@ export function EditableTab(props: IDockviewDefaultTabProps) {
     return () => disposable.dispose();
   }, [api]);
 
-  useEffect(() => {
-    if (editing) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 10);
-      return () => clearTimeout(timer);
-    }
-  }, [editing]);
+  useRenameInput(inputRef, editing);
 
   const commit = useCallback(() => {
     const trimmed = name.trim();

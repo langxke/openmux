@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { Minus, Square, Copy, X } from "lucide-react";
-import { om } from "../lib/openmux-api";
+import { useOpenMux } from "../hooks/useOpenMux";
 
 export function TitleBar() {
   const [maximized, setMaximized] = useState(false);
+  const om = useOpenMux();
 
   useEffect(() => {
-    om()
-      .window.isMaximized()
-      .then(setMaximized);
-    const dispose = om().window.onMaximizeChange(setMaximized);
+    om.window.isMaximized().then(setMaximized);
+    const dispose = om.window.onMaximizeChange(setMaximized);
     return dispose;
-  }, []);
+  }, [om.window]);
 
   return (
     <div
@@ -29,14 +28,14 @@ export function TitleBar() {
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         <button
-          onClick={() => om().window.minimize()}
+          onClick={() => om.window.minimize()}
           className="w-11 h-full flex items-center justify-center hover:bg-black/10 transition-colors"
           title="最小化"
         >
           <Minus size={14} strokeWidth={1.5} />
         </button>
         <button
-          onClick={() => om().window.maximize()}
+          onClick={() => om.window.maximize()}
           className="w-11 h-full flex items-center justify-center hover:bg-black/10 transition-colors"
           title={maximized ? "还原" : "最大化"}
         >
@@ -47,7 +46,7 @@ export function TitleBar() {
           )}
         </button>
         <button
-          onClick={() => om().window.close()}
+          onClick={() => om.window.close()}
           className="w-11 h-full flex items-center justify-center transition-colors"
           title="关闭"
           onMouseEnter={(e) => {

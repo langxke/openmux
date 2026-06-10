@@ -11,7 +11,7 @@ import { TerminalPanel } from "./TerminalPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { HeaderActions } from "./HeaderActions";
 import { EditableTab } from "./EditableTab";
-import { om } from "../lib/openmux-api";
+import { useOpenMux } from "../hooks/useOpenMux";
 import { createTerminalId } from "../lib/terminalId";
 import { useZoomStore } from "../stores/zoomStore";
 
@@ -70,6 +70,8 @@ export function DockviewLayout({
 }: DockviewLayoutProps) {
   const apiRef = useRef<DockviewApi | null>(null);
   const initialSidRef = useRef<string | null>(null);
+  const onOpenBrowserTabRef = useRef<((e: Event) => void) | null>(null);
+  const om = useOpenMux();
 
   const syncUp = useCallback(() => {
     const api = apiRef.current;
@@ -107,7 +109,7 @@ export function DockviewLayout({
       event.api.onDidRemovePanel((panel) => {
         const sid = panel.params?.sessionId as string | undefined;
         if (sid) {
-          om().pty.kill(sid);
+          om.pty.kill(sid);
           useZoomStore.getState().removeSession(sid);
         }
         setTimeout(syncUp, 50);
@@ -129,6 +131,22 @@ export function DockviewLayout({
         }
       });
 
+      onOpenBrowserTabRef.current = (e: Event) => {
+        const url = (e as CustomEvent<string>).detail;
+        if (!url) return;
+        const api = apiRef.current;
+        if (!api) return;
+        const refGroup = api.activePanel?.group;
+        const browserId = `browser-${Date.now()}`;
+        api.addPanel({
+          id: `panel-${browserId}`,
+          component: "browser",
+          title: url,
+          params: { initialUrl: url },
+          ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
+        });
+      };
+
       if (initialLayout) {
         event.api.fromJSON(initialLayout);
       } else {
@@ -148,8 +166,17 @@ export function DockviewLayout({
       setTimeout(syncUp, 50);
       onReady(() => addTerminal());
     },
-    [addTerminal, syncUp, onReady, initialLayout, onApiReady, onLayoutChange],
+    [addTerminal, syncUp, onReady, initialLayout, onApiReady, onLayoutChange, om.pty],
   );
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if (!visible) return;
+      onOpenBrowserTabRef.current?.(e);
+    };
+    window.addEventListener("openmux:openBrowserTab", handler);
+    return () => window.removeEventListener("openmux:openBrowserTab", handler);
+  }, [visible]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -1,7 +1,7 @@
 {
   "name": "openmux",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Windows 上专为 AI 编程开发的终端工作台",
   "author": "langxke",
   "main": ".vite/build/main.js",
